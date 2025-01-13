@@ -4,14 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - TriadApp</title>
-    <script>
-        function showLoginForm(role) {
-            document.getElementById('cards-section').style.display = 'none';
-            const formTitle = document.getElementById('form-title');
-            formTitle.textContent = `${role} Login`;
-            document.getElementById('login-form').classList.remove('hidden');
-        }
-    </script>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-100 flex justify-center items-center min-h-screen">
@@ -40,40 +32,91 @@
         </div>
     </div>
 
-    <!-- Login Form -->
-    <div id="login-form" class="hidden bg-white p-8 rounded-lg shadow-md max-w-md w-full">
-        <h2 id="form-title" class="text-2xl font-bold mb-6"></h2>
-        <form method="POST" action="{% url 'login' %}">
+    <!-- Login Form Section -->
+    <div id="login-form-section" class="hidden bg-white p-8 rounded-lg shadow-lg w-96">
+        <h2 id="form-title" class="text-2xl font-bold mb-4 text-center text-blue-600"></h2>
+        <form id="login-form" method="POST">
             {% csrf_token %}
-            <div class="space-y-4">
-                <div>
-                    <label for="username" class="block text-lg font-medium">Username</label>
-                    <input 
-                        type="text" 
-                        id="username" 
-                        name="username" 
-                        class="w-full p-3 border border-gray-300 rounded-lg" 
-                        required 
-                    >
-                </div>
-                <div>
-                    <label for="password" class="block text-lg font-medium">Password</label>
-                    <input 
-                        type="password" 
-                        id="password" 
-                        name="password" 
-                        class="w-full p-3 border border-gray-300 rounded-lg" 
-                        required 
-                    >
-                </div>
-                <button 
-                    type="submit" 
-                    class="bg-blue-500 text-white w-full p-3 rounded-lg hover:bg-blue-600 transition"
-                >
-                    Login
-                </button>
+            <div id="username-section" class="mb-4">
+                <label for="username" class="block text-lg font-medium">Username</label>
+                <input 
+                    type="text" 
+                    id="username" 
+                    name="username" 
+                    class="w-full p-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                    required>
             </div>
+
+            <div id="email-section" class="mb-4 hidden">
+                <label for="email" class="block text-lg font-medium">Email</label>
+                <input 
+                    type="email" 
+                    id="email" 
+                    name="email" 
+                    class="w-full p-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                    required>
+            </div>
+
+            <div class="mb-4">
+                <label for="password" class="block text-lg font-medium">Password</label>
+                <input 
+                    type="password" 
+                    id="password" 
+                    name="password" 
+                    class="w-full p-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                    required>
+            </div>
+            <button 
+                type="submit" 
+                class="w-full bg-blue-500 text-white p-3 rounded-lg hover:bg-blue-600 transition duration-200">
+                Login
+            </button>
         </form>
+        <div class="mt-4 text-center">
+            <p class="text-gray-500 text-sm">Having trouble logging in? <a href="#" class="text-blue-500 hover:underline">Contact Support</a></p>
+        </div>
     </div>
+
+    <!-- JavaScript -->
+    <script>
+       function showLoginForm(role) {
+    // Hide the card section
+    document.getElementById('cards-section').classList.add('hidden');
+    // Show the login form section
+    document.getElementById('login-form-section').classList.remove('hidden');
+
+    // Get form fields
+    const usernameField = document.getElementById('username');
+    const emailField = document.getElementById('email');
+
+    // Update the form title and action URL based on the selected role
+    const formTitle = document.getElementById('form-title');
+    const loginForm = document.getElementById('login-form');
+
+    if (role === 'Superadmin') {
+        formTitle.textContent = 'Superadmin Login';
+        loginForm.setAttribute('action', '{% url "superadmin_login" %}');
+        usernameField.closest('.mb-4').classList.remove('hidden');
+        usernameField.removeAttribute('disabled');
+        emailField.closest('.mb-4').classList.add('hidden');
+        emailField.setAttribute('disabled', 'disabled');
+    } else if (role === 'Admin') {
+        formTitle.textContent = 'Admin Login';
+        loginForm.setAttribute('action', '{% url "admin_login" %}');
+        usernameField.closest('.mb-4').classList.remove('hidden');
+        usernameField.removeAttribute('disabled');
+        emailField.closest('.mb-4').classList.add('hidden');
+        emailField.setAttribute('disabled', 'disabled');
+    } else if (role === 'Employee') {
+        formTitle.textContent = 'Employee Login';
+        loginForm.setAttribute('action', '{% url "employee_login" %}');
+        emailField.closest('.mb-4').classList.remove('hidden');
+        emailField.removeAttribute('disabled');
+        usernameField.closest('.mb-4').classList.add('hidden');
+        usernameField.setAttribute('disabled', 'disabled');
+    }
+}
+
+    </script>
 </body>
 </html>
