@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - TriadApp</title>
+    <script>
+        function showLoginForm(role) {
+            document.getElementById('cards-section').style.display = 'none';
+            const formTitle = document.getElementById('form-title');
+            formTitle.textContent = `${role} Login`;
+            document.getElementById('login-form').classList.remove('hidden');
+        }
+    </script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 flex justify-center items-center min-h-screen">
+    <!-- Card Section -->
+    <div id="cards-section" class="flex space-x-6">
+        <div 
+            onclick="showLoginForm('Superadmin')" 
+            class="cursor-pointer bg-blue-500 text-white p-6 rounded-lg shadow-md hover:bg-blue-600 transform transition duration-200 hover:scale-105"
+        >
+            <h2 class="text-2xl font-semibold">Superadmin</h2>
+            <p class="mt-2">Manage admins and oversee the system.</p>
+        </div>
+        <div 
+            onclick="showLoginForm('Admin')" 
+            class="cursor-pointer bg-green-500 text-white p-6 rounded-lg shadow-md hover:bg-green-600 transform transition duration-200 hover:scale-105"
+        >
+            <h2 class="text-2xl font-semibold">Admin</h2>
+            <p class="mt-2">Manage inventory and employees.</p>
+        </div>
+        <div 
+            onclick="showLoginForm('Employee')" 
+            class="cursor-pointer bg-yellow-500 text-white p-6 rounded-lg shadow-md hover:bg-yellow-600 transform transition duration-200 hover:scale-105"
+        >
+            <h2 class="text-2xl font-semibold">Employee</h2>
+            <p class="mt-2">Perform tasks and track sales.</p>
+        </div>
+    </div>
+
+    <!-- Login Form -->
+    <div id="login-form" class="hidden bg-white p-8 rounded-lg shadow-md max-w-md w-full">
+        <h2 id="form-title" class="text-2xl font-bold mb-6"></h2>
+        <form method="POST" action="{% url 'login' %}">
+            {% csrf_token %}
+            <div class="space-y-4">
+                <div>
+                    <label for="username" class="block text-lg font-medium">Username</label>
+                    <input 
+                        type="text" 
+                        id="username" 
+                        name="username" 
+                        class="w-full p-3 border border-gray-300 rounded-lg" 
+                        required 
+                    >
+                </div>
+                <div>
+                    <label for="password" class="block text-lg font-medium">Password</label>
+                    <input 
+                        type="password" 
+                        id="password" 
+                        name="password" 
+                        class="w-full p-3 border border-gray-300 rounded-lg" 
+                        required 
+                    >
+                </div>
+                <button 
+                    type="submit" 
+                    class="bg-blue-500 text-white w-full p-3 rounded-lg hover:bg-blue-600 transition"
+                >
+                    Login
+                </button>
+            </div>
+        </form>
+    </div>
+</body>
+</html>

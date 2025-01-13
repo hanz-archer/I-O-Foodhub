@@ -20,6 +20,7 @@ from django.urls import path
 from django.urls import include
 
 urlpatterns = [
-    path('TriadApp/', include('TriadApp.urls')),
     path('admin/', admin.site.urls),
+    path('', include('TriadApp.urls')),
+    
 ]
