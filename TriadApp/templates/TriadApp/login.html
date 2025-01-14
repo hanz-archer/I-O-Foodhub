@@ -61,45 +61,56 @@
         </div>
 
         <!-- Login Form Section -->
-<!-- Login Form Section -->
-<div id="login-form-section" class="hidden bg-white p-8 rounded-xl shadow-lg w-[400px]">
-    <h2 id="form-title" class="text-3xl font-semibold mb-8 text-center text-gray-800">Login</h2>
-    <form id="login-form" method="POST">
-        {% csrf_token %}
-        <div id="username-section" class="mb-6">
-            <label for="username" class="block text-sm font-medium text-gray-700">Username</label>
-            <input 
-                type="text" 
-                id="username" 
-                name="username" 
-                class="w-full p-4 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600 transition duration-200 ease-in-out" 
-                required>
+        <div id="login-form-section" class="hidden font-[sans-serif] max-w-6xl mx-auto">
+            <div class="grid lg:grid-cols-3 md:grid-cols-2 items-center gap-6">
+                <div class="max-md:order-1 lg:col-span-2 w-full bg-[#000842] md:rounded-tr-xl md:rounded-br-xl lg:p-10 p-8">
+                    <img src="https://readymadeui.com/signin-image.webp" class="lg:w-[65%] w-full object-contain block mx-auto" alt="login-image" />
+                </div>
+
+                <div class="w-full p-6 max-md:max-w-lg mx-auto">
+                    <form id="login-form" method="POST">
+                        {% csrf_token %}
+                        <div class="mb-8">
+                            <h3 id="form-title" class="text-gray-800 text-3xl font-bold">Login</h3>
+                        </div>
+
+                        <div id="username-section" class="mb-5">
+                            <label class="text-gray-800 text-[15px] mb-2 block">Username</label>
+                            <div class="relative flex items-center">
+                                <input name="username" id="username" type="text" required 
+                                    class="w-full text-sm text-gray-800 bg-gray-200 focus:bg-gray-100 pl-5 pr-10 py-4 rounded-xl outline-blue-600" 
+                                    placeholder="Enter username">
+                            </div>
+                        </div>
+
+                        <div id="email-section" class="mb-5 hidden">
+                            <label class="text-gray-800 text-[15px] mb-2 block">Email</label>
+                            <div class="relative flex items-center">
+                                <input name="email" id="email" type="email" required 
+                                    class="w-full text-sm text-gray-800 bg-gray-200 focus:bg-gray-100 pl-5 pr-10 py-4 rounded-xl outline-blue-600" 
+                                    placeholder="Enter email">
+                            </div>
+                        </div>
+
+                        <div class="mb-5">
+                            <label class="text-gray-800 text-[15px] mb-2 block">Password</label>
+                            <div class="relative flex items-center">
+                                <input name="password" id="password" type="password" required 
+                                    class="w-full text-sm text-gray-800 bg-gray-200 focus:bg-gray-100 pl-5 pr-10 py-4 rounded-xl outline-blue-600" 
+                                    placeholder="Enter password">
+                            </div>
+                        </div>
+
+                        <div class="mt-8">
+                            <button type="submit" 
+                                class="w-full py-4 px-5 text-sm tracking-wide rounded-xl text-white bg-blue-600 hover:bg-blue-700 focus:outline-none">
+                                Login
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
         </div>
-        <div id="email-section" class="mb-6 hidden">
-            <label for="email" class="block text-sm font-medium text-gray-700">Email</label>
-            <input 
-                type="email" 
-                id="email" 
-                name="email" 
-                class="w-full p-4 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600 transition duration-200 ease-in-out" 
-                required>
-        </div>
-        <div class="mb-6">
-            <label for="password" class="block text-sm font-medium text-gray-700">Password</label>
-            <input 
-                type="password" 
-                id="password" 
-                name="password" 
-                class="w-full p-4 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600 transition duration-200 ease-in-out" 
-                required>
-        </div>
-        <button 
-            type="submit" 
-            class="w-full bg-blue-600 text-white p-4 rounded-md shadow-md hover:bg-blue-700 transition duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2">
-            Login
-        </button>
-    </form>
-</div>
 
     </main>
 
