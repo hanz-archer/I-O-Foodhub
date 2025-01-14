@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Add Stall</title>
+    <!-- Include SweetAlert library -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body>
     <h1>Add a New Stall</h1>
@@ -28,5 +30,129 @@
 
         <button type="submit">Add Stall</button>
     </form>
+
+    <h2>Stalls List</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Store ID</th>
+                <th>Name</th>
+                <th>Contact Number</th>
+                <th>Logo</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for stall in stalls %}
+                <tr>
+                    <td>{{ stall.store_id }}</td>
+                    <td>{{ stall.name }}</td>
+                    <td>{{ stall.contact_number }}</td>
+                    <td>
+                        {% if stall.logo %}
+                            <img src="{{ stall.logo.url }}" alt="Logo" style="width: 50px; height: 50px;">
+                        {% else %}
+                            No Logo
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if stall.is_active %}
+                            Active
+                        {% else %}
+                            Inactive
+                        {% endif %}
+                    </td>
+                    <td>
+                        <!-- Edit action with SweetAlert trigger -->
+                        <a href="#" 
+                           data-store-id="{{ stall.store_id }}"
+                           data-name="{{ stall.name }}"
+                           data-contact="{{ stall.contact_number }}"
+                           data-active="{{ stall.is_active|yesno:'true,false' }}"
+                           onclick="editStall(this)">Edit</a> |
+                        <!-- Delete action with SweetAlert -->
+                        <a href="#" 
+                           data-delete-url="{% url 'delete_stall' stall.store_id %}"
+                           onclick="confirmDelete(this)">Delete</a>
+                    </td>
+                </tr>
+            {% empty %}
+                <tr>
+                    <td colspan="6">No stalls available</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    
+    <script>
+        // SweetAlert delete confirmation
+        function confirmDelete(element) {
+            const url = element.dataset.deleteUrl;
+            Swal.fire({
+                title: 'Are you sure?',
+                text: "You won't be able to undo this action!",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Yes, delete it!',
+                cancelButtonText: 'No, cancel!',
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    window.location.href = url;
+                }
+            });
+        }
+    
+        // SweetAlert edit form with pre-filled values
+        function editStall(element) {
+            const storeId = element.dataset.storeId;
+            const name = element.dataset.name;
+            const contactNumber = element.dataset.contact;
+            const isActive = element.dataset.active;
+            Swal.fire({
+                title: 'Edit Stall',
+                html: `
+                    <form id="editForm" method="POST" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <input type="hidden" name="store_id" value="${storeId}">
+                        <label for="name">Stall Name:</label><br>
+                        <input type="text" id="name" name="name" value="${name}" required><br><br>
+    
+                        <label for="contact_number">Contact Number:</label><br>
+                        <input type="text" id="contact_number" name="contact_number" value="${contactNumber}" required><br><br>
+    
+                        <label for="logo">Logo:</label><br>
+                        <input type="file" id="logo" name="logo"><br><br>
+    
+                        <label for="is_active">Active:</label>
+                        <input type="checkbox" name="is_active" ${isActive === 'true' ? 'checked' : ''}><br><br>
+    
+                        <button type="submit">Save Changes</button>
+                    </form>
+                `,
+                showCancelButton: true,
+                confirmButtonText: 'Save Changes',
+                cancelButtonText: 'Cancel',
+                preConfirm: () => {
+                    const formData = new FormData(document.getElementById('editForm'));
+                    return fetch("{% url 'edit_stall' %}", {
+                        method: 'POST',
+                        body: formData
+                    }).then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            Swal.fire('Success', 'Stall updated successfully!', 'success');
+                            location.reload();  // Reload the page to reflect changes
+                        } else {
+                            Swal.fire('Error', data.message, 'error');
+                        }
+                    }).catch(error => {
+                        Swal.fire('Error', 'An error occurred!', 'error');
+                    });
+                }
+            });
+        }
+    </script>
+    
 </body>
 </html>

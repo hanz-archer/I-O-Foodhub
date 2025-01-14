@@ -7,10 +7,10 @@ class Stall(models.Model):
     name = models.CharField(max_length=255)
     logo = models.ImageField(upload_to='stall_logos/')
     contact_number = models.CharField(max_length=15)
+    is_active = models.BooleanField(default=True)  # Add is_active field with default value True
 
     def __str__(self):
         return self.name
-
 
 
 
