@@ -1,4 +1,3 @@
-
 from django.urls import path
 from . import views
 from . import products
@@ -20,5 +19,7 @@ urlpatterns = [
     path('edit_stall/', accounts.edit_stall, name='edit_stall'),
  
       path('add_product', products.add_product, name='add_product'),
+    path('edit_admin/', accounts.edit_admin, name='edit_admin'),
+    path('delete_admin/<int:admin_id>/', accounts.delete_admin, name='delete_admin'),
 ]
         

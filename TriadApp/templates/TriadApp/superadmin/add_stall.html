@@ -74,7 +74,7 @@
                         <!-- Delete action with SweetAlert -->
                         <a href="#" 
                            data-delete-url="{% url 'delete_stall' stall.store_id %}"
-                           onclick="confirmDelete(this)">Delete</a>
+                           onclick="confirmDelete(this.dataset.deleteUrl)">Delete</a>
                     </td>
                 </tr>
             {% empty %}
@@ -87,18 +87,36 @@
     
     <script>
         // SweetAlert delete confirmation
-        function confirmDelete(element) {
-            const url = element.dataset.deleteUrl;
+        function confirmDelete(url) {
             Swal.fire({
                 title: 'Are you sure?',
-                text: "You won't be able to undo this action!",
+                text: "You won't be able to revert this!",
                 icon: 'warning',
                 showCancelButton: true,
-                confirmButtonText: 'Yes, delete it!',
-                cancelButtonText: 'No, cancel!',
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Yes, delete it!'
             }).then((result) => {
                 if (result.isConfirmed) {
-                    window.location.href = url;
+                    fetch(url, {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRFToken': '{{ csrf_token }}'
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            Swal.fire('Deleted!', data.message, 'success')
+                                .then(() => location.reload());
+                        } else {
+                            Swal.fire('Error!', data.message, 'error');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        Swal.fire('Error!', 'An error occurred while deleting the stall', 'error');
+                    });
                 }
             });
         }

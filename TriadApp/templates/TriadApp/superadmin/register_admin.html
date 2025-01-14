@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Registration</title>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body>
     <h1>Admin Registration</h1>
@@ -45,5 +46,181 @@
 
         <button type="submit">Register Admin</button>
     </form>
+
+    <h2>Admin List</h2>
+    <table border="1" style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Age</th>
+                <th>Birthdate</th>
+                <th>Address</th>
+                <th>Username</th>
+                <th>Contact Number</th>
+                <th>Stall</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for admin in admins %}
+            <tr>
+                <td>{{ admin.firstname }} {{ admin.middle_initial }} {{ admin.lastname }}</td>
+                <td>{{ admin.age }}</td>
+                <td>{{ admin.birthdate|date:"M d, Y" }}</td>
+                <td>{{ admin.address }}</td>
+                <td>{{ admin.username }}</td>
+                <td>{{ admin.contact_number }}</td>
+                <td>{{ admin.stall.name }}</td>
+                <td style="text-align: center;">
+                    <button data-admin='{"id": "{{ admin.id }}", 
+                            "firstname": "{{ admin.firstname|escapejs }}", 
+                            "middle_initial": "{{ admin.middle_initial|escapejs }}", 
+                            "lastname": "{{ admin.lastname|escapejs }}", 
+                            "age": "{{ admin.age }}", 
+                            "birthdate": "{{ admin.birthdate|date:'Y-m-d' }}", 
+                            "address": "{{ admin.address|escapejs }}", 
+                            "username": "{{ admin.username|escapejs }}", 
+                            "contact_number": "{{ admin.contact_number|escapejs }}", 
+                            "stall_id": "{{ admin.stall.id }}"}'
+                            onclick="editAdmin(this)" 
+                            class="btn btn-primary btn-sm">Edit</button>
+                    <button onclick="deleteAdmin('{{ admin.id }}')" class="btn btn-danger btn-sm">
+                        Delete
+                    </button>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <script>
+    function editAdmin(button) {
+        const data = JSON.parse(button.dataset.admin);
+        Swal.fire({
+            title: 'Edit Admin Profile',
+            html: `
+                <form id="editAdminForm">
+                    <input type="hidden" id="edit_admin_id" name="admin_id" value="${data.id}">
+                    <div class="mb-3">
+                        <label for="edit_firstname">First Name</label><br>
+                        <input type="text" id="edit_firstname" name="firstname" value="${data.firstname}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_middle_initial">Middle Initial</label><br>
+                        <input type="text" id="edit_middle_initial" name="middle_initial" value="${data.middle_initial}">
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_lastname">Last Name</label><br>
+                        <input type="text" id="edit_lastname" name="lastname" value="${data.lastname}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_age">Age</label><br>
+                        <input type="number" id="edit_age" name="age" value="${data.age}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_birthdate">Birthdate</label><br>
+                        <input type="date" id="edit_birthdate" name="birthdate" value="${data.birthdate}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_address">Address</label><br>
+                        <input type="text" id="edit_address" name="address" value="${data.address}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_username">Username</label><br>
+                        <input type="text" id="edit_username" name="username" value="${data.username}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_contact_number">Contact Number</label><br>
+                        <input type="text" id="edit_contact_number" name="contact_number" value="${data.contact_number}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_stall">Stall</label><br>
+                        <select id="edit_stall" name="stall" required>
+                            {% for stall in stalls %}
+                            <option value="{{ stall.id }}">{{ stall.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_password">New Password (leave blank to keep current)</label><br>
+                        <input type="password" id="edit_password" name="password">
+                    </div>
+                </form>
+            `,
+            showCancelButton: true,
+            confirmButtonText: 'Save Changes',
+            cancelButtonText: 'Cancel',
+            didOpen: () => {
+                document.getElementById('edit_stall').value = data.stall_id;
+            },
+            preConfirm: () => {
+                const formData = new FormData(document.getElementById('editAdminForm'));
+                return fetch('/edit_admin/', {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        Swal.fire('Success', data.message, 'success')
+                        .then(() => location.reload());
+                    } else {
+                        Swal.showValidationMessage(data.message);
+                    }
+                })
+                .catch(error => {
+                    Swal.showValidationMessage('An error occurred while updating the admin profile');
+                });
+            }
+        });
+    }
+
+    function deleteAdmin(adminId) {
+        Swal.fire({
+            title: 'Are you sure?',
+            text: "You won't be able to revert this!",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Yes, delete it!'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                fetch(`/delete_admin/${adminId}/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        Swal.fire(
+                            'Deleted!',
+                            data.message,
+                            'success'
+                        ).then(() => location.reload());
+                    } else {
+                        Swal.fire(
+                            'Error!',
+                            data.message,
+                            'error'
+                        );
+                    }
+                })
+                .catch(error => {
+                    Swal.fire(
+                        'Error!',
+                        'An error occurred while deleting the admin profile',
+                        'error'
+                    );
+                });
+            }
+        });
+    }
+    </script>
 </body>
 </html>
