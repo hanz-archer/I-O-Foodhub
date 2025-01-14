@@ -165,6 +165,7 @@ def register_admin(request):
         birthdate = request.POST.get('birthdate')
         address = request.POST.get('address')
         username = request.POST.get('username')
+        email = request.POST.get('email')
         password = request.POST.get('password')
         contact_number = request.POST.get('contact_number')
         stall_id = request.POST.get('stall')
@@ -178,8 +179,14 @@ def register_admin(request):
                 messages.error(request, f'Stall {stall.name} already has an admin assigned')
                 return redirect('register_admin')
             
+            # Check if username exists
             if AdminProfile.objects.filter(username=username).exists():
                 messages.error(request, 'Username already exists')
+                return redirect('register_admin')
+            
+            # Check if email exists
+            if AdminProfile.objects.filter(email=email).exists():
+                messages.error(request, 'Email already exists')
                 return redirect('register_admin')
             
             hashed_password = make_password(password)
@@ -192,6 +199,7 @@ def register_admin(request):
                 birthdate=birthdate,
                 address=address,
                 username=username,
+                email=email,
                 password=hashed_password,
                 contact_number=contact_number,
                 stall=stall
@@ -220,27 +228,53 @@ def register_admin(request):
 def edit_admin(request):
     """Handles editing an admin profile."""
     if request.method == 'POST':
-        admin_id = request.POST.get('admin_id')
-        firstname = request.POST.get('firstname')
-        middle_initial = request.POST.get('middle_initial')
-        lastname = request.POST.get('lastname')
-        age = request.POST.get('age')
-        birthdate = request.POST.get('birthdate')
-        address = request.POST.get('address')
-        username = request.POST.get('username')
-        contact_number = request.POST.get('contact_number')
-        stall_id = request.POST.get('stall')
-        password = request.POST.get('password')  # Optional - only if changing password
-
         try:
+            admin_id = request.POST.get('admin_id')
             admin = get_object_or_404(AdminProfile, id=admin_id)
-            stall = get_object_or_404(Stall, id=stall_id)
+            
+            # Get form data
+            firstname = request.POST.get('firstname')
+            middle_initial = request.POST.get('middle_initial')
+            lastname = request.POST.get('lastname')
+            age = request.POST.get('age')
+            birthdate = request.POST.get('birthdate')
+            address = request.POST.get('address')
+            username = request.POST.get('username')
+            email = request.POST.get('email')
+            contact_number = request.POST.get('contact_number')
+            new_stall_id = request.POST.get('stall')
+            new_password = request.POST.get('password')
 
-            # Check if username changed and if new username already exists
+            # Handle stall update
+            if new_stall_id and str(admin.stall.store_id) != str(new_stall_id):
+                try:
+                    # Check if the new stall already has an admin
+                    if AdminProfile.objects.filter(stall__store_id=new_stall_id).exclude(id=admin_id).exists():
+                        return JsonResponse({
+                            'success': False,
+                            'message': 'Selected stall already has an admin assigned'
+                        })
+                    
+                    # Get the new stall using store_id
+                    new_stall = Stall.objects.get(store_id=new_stall_id)
+                    admin.stall = new_stall
+                except Stall.DoesNotExist:
+                    return JsonResponse({
+                        'success': False,
+                        'message': 'Selected stall does not exist'
+                    })
+
+            # Rest of your existing validation and update code...
             if admin.username != username and AdminProfile.objects.filter(username=username).exists():
                 return JsonResponse({
                     'success': False,
                     'message': 'Username already exists'
+                })
+
+            if admin.email != email and AdminProfile.objects.filter(email=email).exists():
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Email already exists'
                 })
 
             # Update admin details
@@ -251,20 +285,35 @@ def edit_admin(request):
             admin.birthdate = birthdate
             admin.address = address
             admin.username = username
+            admin.email = email
             admin.contact_number = contact_number
-            admin.stall = stall
 
-            # Only update password if provided
-            if password:
-                admin.password = make_password(password)
+            if new_password and new_password.strip():
+                admin.password = make_password(new_password)
 
             admin.save()
+
             return JsonResponse({
                 'success': True,
-                'message': 'Admin profile updated successfully!'
+                'message': 'Admin profile updated successfully!',
+                'data': {
+                    'id': admin.id,
+                    'firstname': admin.firstname,
+                    'middle_initial': admin.middle_initial,
+                    'lastname': admin.lastname,
+                    'age': admin.age,
+                    'birthdate': admin.birthdate,
+                    'address': admin.address,
+                    'username': admin.username,
+                    'email': admin.email,
+                    'contact_number': admin.contact_number,
+                    'stall_name': admin.stall.name,
+                    'stall_id': admin.stall.store_id
+                }
             })
 
         except Exception as e:
+            print(f"Error in edit_admin: {str(e)}")
             return JsonResponse({
                 'success': False,
                 'message': f'Error updating admin profile: {str(e)}'
@@ -342,6 +391,7 @@ def register_admin(request):
         birthdate = request.POST.get('birthdate')
         address = request.POST.get('address')
         username = request.POST.get('username')
+        email = request.POST.get('email')
         password = request.POST.get('password')
         contact_number = request.POST.get('contact_number')
         stall_id = request.POST.get('stall')
@@ -355,8 +405,14 @@ def register_admin(request):
                 messages.error(request, f'Stall {stall.name} already has an admin assigned')
                 return redirect('register_admin')
             
+            # Check if username exists
             if AdminProfile.objects.filter(username=username).exists():
                 messages.error(request, 'Username already exists')
+                return redirect('register_admin')
+            
+            # Check if email exists
+            if AdminProfile.objects.filter(email=email).exists():
+                messages.error(request, 'Email already exists')
                 return redirect('register_admin')
             
             hashed_password = make_password(password)
@@ -369,6 +425,7 @@ def register_admin(request):
                 birthdate=birthdate,
                 address=address,
                 username=username,
+                email=email,
                 password=hashed_password,
                 contact_number=contact_number,
                 stall=stall
@@ -393,27 +450,53 @@ def register_admin(request):
 def edit_admin(request):
     """Handles editing an admin profile."""
     if request.method == 'POST':
-        admin_id = request.POST.get('admin_id')
-        firstname = request.POST.get('firstname')
-        middle_initial = request.POST.get('middle_initial')
-        lastname = request.POST.get('lastname')
-        age = request.POST.get('age')
-        birthdate = request.POST.get('birthdate')
-        address = request.POST.get('address')
-        username = request.POST.get('username')
-        contact_number = request.POST.get('contact_number')
-        stall_id = request.POST.get('stall')
-        password = request.POST.get('password')  # Optional - only if changing password
-
         try:
+            admin_id = request.POST.get('admin_id')
             admin = get_object_or_404(AdminProfile, id=admin_id)
-            stall = get_object_or_404(Stall, id=stall_id)
+            
+            # Get form data
+            firstname = request.POST.get('firstname')
+            middle_initial = request.POST.get('middle_initial')
+            lastname = request.POST.get('lastname')
+            age = request.POST.get('age')
+            birthdate = request.POST.get('birthdate')
+            address = request.POST.get('address')
+            username = request.POST.get('username')
+            email = request.POST.get('email')
+            contact_number = request.POST.get('contact_number')
+            new_stall_id = request.POST.get('stall')
+            new_password = request.POST.get('password')
 
-            # Check if username changed and if new username already exists
+            # Handle stall update
+            if new_stall_id and str(admin.stall.store_id) != str(new_stall_id):
+                try:
+                    # Check if the new stall already has an admin
+                    if AdminProfile.objects.filter(stall__store_id=new_stall_id).exclude(id=admin_id).exists():
+                        return JsonResponse({
+                            'success': False,
+                            'message': 'Selected stall already has an admin assigned'
+                        })
+                    
+                    # Get the new stall using store_id
+                    new_stall = Stall.objects.get(store_id=new_stall_id)
+                    admin.stall = new_stall
+                except Stall.DoesNotExist:
+                    return JsonResponse({
+                        'success': False,
+                        'message': 'Selected stall does not exist'
+                    })
+
+            # Rest of your existing validation and update code...
             if admin.username != username and AdminProfile.objects.filter(username=username).exists():
                 return JsonResponse({
                     'success': False,
                     'message': 'Username already exists'
+                })
+
+            if admin.email != email and AdminProfile.objects.filter(email=email).exists():
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Email already exists'
                 })
 
             # Update admin details
@@ -424,20 +507,35 @@ def edit_admin(request):
             admin.birthdate = birthdate
             admin.address = address
             admin.username = username
+            admin.email = email
             admin.contact_number = contact_number
-            admin.stall = stall
 
-            # Only update password if provided
-            if password:
-                admin.password = make_password(password)
+            if new_password and new_password.strip():
+                admin.password = make_password(new_password)
 
             admin.save()
+
             return JsonResponse({
                 'success': True,
-                'message': 'Admin profile updated successfully!'
+                'message': 'Admin profile updated successfully!',
+                'data': {
+                    'id': admin.id,
+                    'firstname': admin.firstname,
+                    'middle_initial': admin.middle_initial,
+                    'lastname': admin.lastname,
+                    'age': admin.age,
+                    'birthdate': admin.birthdate,
+                    'address': admin.address,
+                    'username': admin.username,
+                    'email': admin.email,
+                    'contact_number': admin.contact_number,
+                    'stall_name': admin.stall.name,
+                    'stall_id': admin.stall.store_id
+                }
             })
 
         except Exception as e:
+            print(f"Error in edit_admin: {str(e)}")
             return JsonResponse({
                 'success': False,
                 'message': f'Error updating admin profile: {str(e)}'

@@ -2,6 +2,7 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from .models import CustomUser, Stall, AdminProfile
 from django.utils.html import format_html
+from django.contrib.auth.hashers import make_password
 
 @admin.register(CustomUser)
 class CustomUserAdmin(UserAdmin):
@@ -95,6 +96,7 @@ class StallAdmin(admin.ModelAdmin):
 class AdminProfileAdmin(admin.ModelAdmin):
     list_display = (
         'username',
+        'email',
         'firstname',
         'middle_initial',
         'lastname',
@@ -103,11 +105,29 @@ class AdminProfileAdmin(admin.ModelAdmin):
         'address',
         'contact_number',
         'get_store_id',
-        'get_stall_name'
+        'get_stall_name',
+        'get_masked_password'
     )
-    search_fields = ('username', 'firstname', 'lastname', 'contact_number')
+    search_fields = ('username', 'email', 'firstname', 'lastname', 'contact_number')
     list_filter = ('stall', 'age', 'birthdate')
     ordering = ('username',)
+    
+    readonly_fields = ('get_masked_password',)
+    
+    fieldsets = (
+        ('Login Credentials', {
+            'fields': ('username', 'password', 'get_masked_password')
+        }),
+        ('Personal Information', {
+            'fields': ('firstname', 'middle_initial', 'lastname', 'email', 'age', 'birthdate', 'address')
+        }),
+        ('Contact Information', {
+            'fields': ('contact_number',)
+        }),
+        ('Stall Assignment', {
+            'fields': ('stall',)
+        }),
+    )
 
     def get_store_id(self, obj):
         return obj.stall.store_id
@@ -116,3 +136,16 @@ class AdminProfileAdmin(admin.ModelAdmin):
     def get_stall_name(self, obj):
         return obj.stall.name
     get_stall_name.short_description = 'Stall Name'
+    
+    def get_masked_password(self, obj):
+        """Display a masked version of the password hash for security"""
+        if obj.password:
+            return f"{obj.password[:8]}..."  # Show only first 8 characters
+        return "No password set"
+    get_masked_password.short_description = 'Password Hash'
+
+    def save_model(self, request, obj, form, change):
+        """Handle password hashing when saving through admin"""
+        if 'password' in form.changed_data:
+            obj.password = make_password(form.cleaned_data['password'])
+        super().save_model(request, obj, form, change) 

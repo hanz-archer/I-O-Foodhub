@@ -23,6 +23,7 @@ class AdminProfile(models.Model):
     birthdate = models.DateField()
     address = models.TextField()
     username = models.CharField(max_length=50, unique=True)
+    email = models.EmailField(max_length=254, unique=True, default='', blank=True)  # Updated email field
     password = models.CharField(max_length=100)  # Remember to hash passwords
     contact_number = models.CharField(max_length=15)
     stall = models.ForeignKey('Stall', on_delete=models.CASCADE, related_name="admins", to_field='store_id')
@@ -36,6 +37,9 @@ class AdminProfile(models.Model):
 
     def save(self, *args, **kwargs):
         self.clean()
+        # Set default email if not provided
+        if not self.email:
+            self.email = f"{self.username}@default.com"
         super().save(*args, **kwargs)
 
     def __str__(self):

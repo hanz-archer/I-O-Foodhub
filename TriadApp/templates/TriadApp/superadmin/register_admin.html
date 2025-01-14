@@ -84,6 +84,12 @@
                 </div>
 
                 <div>
+                    <label for="email" class="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
+                    <input type="email" id="email" name="email" required
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+
+                <div>
                     <label for="password" class="block text-sm font-medium text-gray-700 mb-2">Password</label>
                     <input type="password" id="password" name="password" required
                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
@@ -141,6 +147,7 @@
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Birthdate</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Address</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Username</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact Number</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stall</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
@@ -154,6 +161,7 @@
                         <td class="px-6 py-4 whitespace-nowrap">{{ admin.birthdate|date:"M d, Y" }}</td>
                         <td class="px-6 py-4">{{ admin.address }}</td>
                         <td class="px-6 py-4 whitespace-nowrap">{{ admin.username }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">{{ admin.email }}</td>
                         <td class="px-6 py-4 whitespace-nowrap">{{ admin.contact_number }}</td>
                         <td class="px-6 py-4 whitespace-nowrap">{{ admin.stall.name }}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm">
@@ -166,8 +174,10 @@
                                                "birthdate": "{{ admin.birthdate|date:'Y-m-d' }}", 
                                                "address": "{{ admin.address|escapejs }}", 
                                                "username": "{{ admin.username|escapejs }}", 
+                                               "email": "{{ admin.email|escapejs }}", 
                                                "contact_number": "{{ admin.contact_number|escapejs }}", 
-                                               "stall_id": "{{ admin.stall.id }}"}'
+                                               "stall_id": "{{ admin.stall.store_id }}", 
+                                               "stall_name": "{{ admin.stall.name|escapejs }}"}'
                                     onclick="editAdmin(this)">
                                 Edit
                             </button>
@@ -192,54 +202,100 @@
         Swal.fire({
             title: 'Edit Admin Profile',
             html: `
-                <form id="editAdminForm">
+                <form id="editAdminForm" class="space-y-4 p-4">
                     <input type="hidden" id="edit_admin_id" name="admin_id" value="${data.id}">
-                    <div class="mb-3">
-                        <label for="edit_firstname">First Name</label><br>
-                        <input type="text" id="edit_firstname" name="firstname" value="${data.firstname}" required>
+                    
+                    <!-- Name Section -->
+                    <div class="grid grid-cols-3 gap-4">
+                        <div class="col-span-1">
+                            <label for="edit_firstname" class="block text-sm font-medium text-gray-700">First Name</label>
+                            <input type="text" id="edit_firstname" name="firstname" value="${data.firstname}" required
+                                   class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+                        </div>
+                        <div class="col-span-1">
+                            <label for="edit_middle_initial" class="block text-sm font-medium text-gray-700">Middle Initial</label>
+                            <input type="text" id="edit_middle_initial" name="middle_initial" value="${data.middle_initial}"
+                                   class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+                        </div>
+                        <div class="col-span-1">
+                            <label for="edit_lastname" class="block text-sm font-medium text-gray-700">Last Name</label>
+                            <input type="text" id="edit_lastname" name="lastname" value="${data.lastname}" required
+                                   class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+                        </div>
                     </div>
-                    <div class="mb-3">
-                        <label for="edit_middle_initial">Middle Initial</label><br>
-                        <input type="text" id="edit_middle_initial" name="middle_initial" value="${data.middle_initial}">
+
+                    <!-- Personal Info Section -->
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label for="edit_age" class="block text-sm font-medium text-gray-700">Age</label>
+                            <input type="number" id="edit_age" name="age" value="${data.age}" required
+                                   class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+                        </div>
+                        <div>
+                            <label for="edit_birthdate" class="block text-sm font-medium text-gray-700">Birthdate</label>
+                            <input type="date" id="edit_birthdate" name="birthdate" value="${data.birthdate}" required
+                                   class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+                        </div>
                     </div>
-                    <div class="mb-3">
-                        <label for="edit_lastname">Last Name</label><br>
-                        <input type="text" id="edit_lastname" name="lastname" value="${data.lastname}" required>
+
+                    <!-- Contact Info Section -->
+                    <div class="space-y-4">
+                        <div>
+                            <label for="edit_address" class="block text-sm font-medium text-gray-700">Address</label>
+                            <input type="text" id="edit_address" name="address" value="${data.address}" required
+                                   class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+                        </div>
+                        <div>
+                            <label for="edit_contact_number" class="block text-sm font-medium text-gray-700">Contact Number</label>
+                            <input type="text" id="edit_contact_number" name="contact_number" value="${data.contact_number}" required
+                                   class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+                        </div>
                     </div>
-                    <div class="mb-3">
-                        <label for="edit_age">Age</label><br>
-                        <input type="number" id="edit_age" name="age" value="${data.age}" required>
+
+                    <!-- Account Info Section -->
+                    <div class="space-y-4 border-t pt-4">
+                        <div>
+                            <label for="edit_email" class="block text-sm font-medium text-gray-700">Email Address</label>
+                            <input type="email" id="edit_email" name="email" value="${data.email}" required
+                                   class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+                        </div>
+                        <div>
+                            <label for="edit_username" class="block text-sm font-medium text-gray-700">Username</label>
+                            <input type="text" id="edit_username" name="username" value="${data.username}" required
+                                   class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+                        </div>
+                        <div>
+                            <label for="edit_password" class="block text-sm font-medium text-gray-700">New Password</label>
+                            <input type="password" id="edit_password" name="password" placeholder="Leave blank to keep current password"
+                                   class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+                        </div>
                     </div>
-                    <div class="mb-3">
-                        <label for="edit_birthdate">Birthdate</label><br>
-                        <input type="date" id="edit_birthdate" name="birthdate" value="${data.birthdate}" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="edit_address">Address</label><br>
-                        <input type="text" id="edit_address" name="address" value="${data.address}" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="edit_username">Username</label><br>
-                        <input type="text" id="edit_username" name="username" value="${data.username}" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="edit_contact_number">Contact Number</label><br>
-                        <input type="text" id="edit_contact_number" name="contact_number" value="${data.contact_number}" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="edit_stall">Stall</label><br>
-                        <select id="edit_stall" name="stall" required>
+
+                    <!-- Stall Selection -->
+                    <div class="border-t pt-4">
+                        <label for="edit_stall" class="block text-sm font-medium text-gray-700">Stall Assignment</label>
+                        <select id="edit_stall" name="stall" required
+                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
                             {% for stall in stalls %}
-                            <option value="{{ stall.id }}">{{ stall.name }}</option>
+                                <option value="{{ stall.store_id }}" 
+                                        ${data.stall_id === '{{ stall.store_id }}' ? 'selected' : ''}>
+                                    {{ stall.name }}
+                                </option>
                             {% endfor %}
                         </select>
                     </div>
-                    <div class="mb-3">
-                        <label for="edit_password">New Password (leave blank to keep current)</label><br>
-                        <input type="password" id="edit_password" name="password">
-                    </div>
                 </form>
             `,
+            customClass: {
+                container: 'max-w-2xl mx-auto',
+                popup: 'rounded-lg shadow-xl',
+                header: 'border-b pb-3',
+                title: 'text-lg font-semibold text-gray-900',
+                content: 'p-0',
+                confirmButton: 'bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md',
+                cancelButton: 'bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded-md'
+            },
+            width: '32rem',
             showCancelButton: true,
             confirmButtonText: 'Save Changes',
             cancelButtonText: 'Cancel',

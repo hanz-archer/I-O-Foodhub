@@ -1,19 +1,46 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Welcome to TriadApp</title>
+    <title>Welcome to I/O Food Hub</title>
+    <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
-    <h1>Hello from TriadApp!</h1>
-    <a href="{%url 'admin'%}">admin</a><br>
-    <a href="{%url 'super_admin'%}">superadmin</a><br>
+<body class="bg-gradient-to-br from-blue-100 to-white min-h-screen">
+    <div class="flex flex-col items-center justify-center min-h-screen p-4">
+        <!-- Logo Container -->
+        <div class="mb-8 text-center">
+            <h1 class="text-4xl md:text-5xl font-bold text-gray-800 mb-4">I/O Food Hub</h1>
+            <p class="text-lg text-gray-600 max-w-md mx-auto">
+                Welcome to your digital food court management system
+            </p>
+        </div>
 
+        <!-- Get Started Button -->
+        <a href="{% url 'superadmin_login' %}" 
+           class="inline-flex items-center px-8 py-3 text-lg font-semibold text-white 
+                  bg-blue-600 rounded-lg shadow-lg hover:bg-blue-700 
+                  transform transition duration-200 hover:scale-105 
+                  focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+            Get Started
+            <svg xmlns="http://www.w3.org/2000/svg" 
+                 class="h-5 w-5 ml-2" 
+                 viewBox="0 0 20 20" 
+                 fill="currentColor">
+                <path fill-rule="evenodd" 
+                      d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" 
+                      clip-rule="evenodd" />
+            </svg>
+        </a>
 
-    <a href="{%url 'superadmin_login'%}">login</a>
+        <!-- Footer -->
+        <div class="absolute bottom-4 text-center text-gray-500">
+            <p>&copy; 2024 I/O Food Hub. All rights reserved.</p>
+        </div>
+    </div>
 
+    <!-- Optional: Add some decorative elements -->
+    <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-500 to-purple-500"></div>
 </body>
 </html>
         
