@@ -1,6 +1,6 @@
-
 from django.shortcuts import render, redirect
 from django.contrib import messages
+from .decorators import superuser_required
 
 
 
@@ -11,8 +11,11 @@ from django.contrib import messages
 
 
 
+@superuser_required
 def inventory(request):
     return render(request, 'TriadApp/admin/admin-inventory.html')
+
+@superuser_required
 def add_product(request):
    
 
