@@ -1,4 +1,3 @@
-
 from django.shortcuts import render, redirect
 from django.contrib import messages
 import pyrebase
@@ -7,7 +6,7 @@ from django.contrib import messages
 from django.contrib.auth.hashers import check_password
 from .models import AdminProfile
 from django.contrib.auth import authenticate, login
-
+from .decorators import superuser_required
 from django.contrib.auth import logout
 from django.shortcuts import redirect
 from django.contrib import messages
@@ -15,7 +14,8 @@ from django.contrib import messages
 
 def index(request):
     return render(request, 'TriadApp/index.html')
-        
+
+@superuser_required
 def super_admin(request):
     return render(request, 'TriadApp/superadmin/super_admin.html')
 
@@ -24,8 +24,7 @@ def admin(request):
     return render(request, 'TriadApp/admin/admin.html')
 
 
-
-def login(request):
+def login_page(request):
     return render(request, 'TriadApp/login.html')
 
 
@@ -37,9 +36,8 @@ def logout_view(request):
 
 
 
-
-
-
+def register_admin(request):
+    return render(request, 'TriadApp/superadmin/register_admin.html')
 
 
 
@@ -52,8 +50,8 @@ def superadmin_login(request):
         user = authenticate(request, username=username, password=password)
 
         if user is not None and user.is_superuser:
-            login(request)  # Use the correct Django login function
-            return redirect('super_admin')  # Change to the actual dashboard URL
+            login(request, user)  # Now this will use Django's login function
+            return redirect('super_admin')
         else:
             messages.error(request, 'Invalid credentials or not authorized as Superadmin.')
     
@@ -95,8 +93,8 @@ def employee_login(request):
         user = authenticate(request, username=username, password=password)
 
         if user is not None and user.is_superuser:
-            login(request)  # Use the correct Django login function
-            return redirect('superadmin')  # Change to the actual dashboard URL
+            login(request, user)  # Now this will use Django's login function
+            return redirect('superadmin')
         else:
             messages.error(request, 'Invalid credentials or not authorized as Superadmin.')
     

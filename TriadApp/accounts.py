@@ -234,6 +234,7 @@ def delete_admin(request, admin_id):
         'success': False,
         'message': 'Invalid request method'
     })
+
 @superuser_required
 def add_stall(request):
     # First check if this is a redirect from a successful submission
@@ -402,4 +403,3 @@ def delete_admin(request, admin_id):
         'success': False,
         'message': 'Invalid request method'
     })
-
