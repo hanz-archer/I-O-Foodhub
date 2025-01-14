@@ -3,6 +3,7 @@ from . import views
 from . import products
 from . import accounts
 
+
 urlpatterns = [
     path('', views.index, name='index'),
      path('admin-dashboard', views.admin, name='admin'),
@@ -21,5 +22,6 @@ urlpatterns = [
       path('add_product', products.add_product, name='add_product'),
     path('edit_admin/', accounts.edit_admin, name='edit_admin'),
     path('delete_admin/<int:admin_id>/', accounts.delete_admin, name='delete_admin'),
+    path('logout/', views.logout_view, name='logout'),
 ]
         
