@@ -4,19 +4,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Panel - Inventory</title>
+    <title>{% block title %}Admin Panel{% endblock %}</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.16/dist/tailwind.min.css" rel="stylesheet">
+    {% block extra_head %}{% endblock %}
 </head>
 
 <body class="bg-gray-100">
-
     <!-- Sidebar -->
     <div class="flex">
         <!-- Sidebar Section -->
-        <div class="w-64 h-screen bg-gray-800 text-white">
+        <div class="w-64 h-screen bg-gray-800 text-white fixed">
             <div class="flex flex-col items-center py-4">
                 <h1 class="text-2xl font-bold">Admin Panel</h1>
-                <nav class="mt-6">
+                <nav class="mt-6 w-full">
                     <ul>
                         <li>
                             <a href="{% url 'super_admin' %}" class="block py-2.5 px-6 text-lg hover:bg-gray-700">Dashboard</a>
@@ -33,22 +33,38 @@
                         <li>
                             <a href="#" class="block py-2.5 px-6 text-lg hover:bg-gray-700">Settings</a>
                         </li>
+                        <li class="mt-auto border-t border-gray-700 pt-4">
+                            <a href="{% url 'logout' %}" 
+                               class="block py-2.5 px-6 text-lg text-red-400 hover:bg-gray-700 hover:text-red-300">
+                                <div class="flex items-center">
+                                    <span>Logout</span>
+                                </div>
+                            </a>
+                        </li>
                     </ul>
                 </nav>
             </div>
         </div>
 
         <!-- Main Content -->
-        <div class="flex-1 p-6">
-            <h2 class="text-3xl font-semibold">Inventory Management</h2>
-            <p class="mt-4 text-lg">Manage the products in your inventory.</p>
-
+        <div class="flex-1 ml-64 p-6">
             {% block content %}
-            <!-- Dynamic Content Goes Here -->
+           Dashboard
             {% endblock %}
         </div>
     </div>
 
+    {% block extra_scripts %}{% endblock %}
+
+    {% if messages %}
+    <div class="messages">
+        {% for message in messages %}
+        <div class="alert {% if message.tags %}alert-{{ message.tags }}{% endif %}">
+            {{ message }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
 </body>
 
 </html>

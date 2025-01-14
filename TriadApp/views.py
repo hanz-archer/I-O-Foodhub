@@ -2,8 +2,16 @@
 from django.shortcuts import render, redirect
 from django.contrib import messages
 import pyrebase
-
+from django.shortcuts import render, redirect
+from django.contrib import messages
+from django.contrib.auth.hashers import check_password
+from .models import AdminProfile
 from django.contrib.auth import authenticate, login
+
+from django.contrib.auth import logout
+from django.shortcuts import redirect
+from django.contrib import messages
+
 
 def index(request):
     return render(request, 'TriadApp/index.html')
@@ -19,6 +27,20 @@ def admin(request):
 
 def login(request):
     return render(request, 'TriadApp/login.html')
+
+
+
+def logout_view(request):
+    logout(request)
+    messages.success(request, 'You have been successfully logged out.')
+    return redirect('index')  # Replace 'login' with your login URL name
+
+
+
+
+
+
+
 
 
 def superadmin_login(request):
@@ -38,10 +60,7 @@ def superadmin_login(request):
     return render(request, 'TriadApp/login.html')
 
 
-from django.shortcuts import render, redirect
-from django.contrib import messages
-from django.contrib.auth.hashers import check_password
-from .models import AdminProfile
+
 
 def admin_login(request):
     if request.method == 'POST':
