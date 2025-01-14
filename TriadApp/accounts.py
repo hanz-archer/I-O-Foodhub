@@ -9,8 +9,66 @@ from django.urls import reverse
 from django.db.models import Q
 from .models import Stall
 from .decorators import superuser_required
+from django.contrib import messages
+from django.core.exceptions import ValidationError
+from django.contrib.auth import get_user_model
 
+@superuser_required
+def super_admin_profile(request):
+    return render(request, 'TriadApp/superadmin/super_admin_profile.html', {
+        'user': request.user
+    })
 
+@superuser_required
+def update_super_admin_profile(request):
+    if request.method == 'POST':
+        try:
+            user = request.user
+            
+            # Debug print statements
+            print("Files in request:", request.FILES)
+            print("POST data:", request.POST)
+            
+            # Handle profile image upload
+            if 'profile_image' in request.FILES:
+                print("Processing profile image")
+                user.profile_image = request.FILES['profile_image']
+                print("Profile image assigned")
+            
+            # Update other fields...
+            user.first_name = request.POST.get('firstname', user.first_name)
+            user.middle_name = request.POST.get('middle_name', user.middle_name)
+            user.last_name = request.POST.get('lastname', user.last_name)
+            user.email = request.POST.get('email', user.email)
+            user.username = request.POST.get('username', user.username)
+            user.gender = request.POST.get('gender', user.gender)
+            user.phone = request.POST.get('phone', user.phone)
+            user.address = request.POST.get('address', user.address)
+            
+            birthdate = request.POST.get('birthdate')
+            if birthdate:
+                user.birthdate = birthdate
+            
+            # Save the user object
+            user.save()
+            print("User saved successfully")
+            
+            return JsonResponse({
+                'success': True,
+                'message': 'Profile updated successfully!'
+            })
+            
+        except Exception as e:
+            print(f"Error in update_super_admin_profile: {str(e)}")
+            return JsonResponse({
+                'success': False,
+                'message': f'Error updating profile: {str(e)}'
+            })
+    
+    return JsonResponse({
+        'success': False,
+        'message': 'Invalid request method'
+    })
 
 
 @superuser_required
@@ -94,9 +152,8 @@ def delete_stall(request, store_id):
 
 
 
-
-
-
+from uuid import UUID
+from django.core.exceptions import ValidationError
 
 @superuser_required
 def register_admin(request):
@@ -113,14 +170,17 @@ def register_admin(request):
         stall_id = request.POST.get('stall')
 
         try:
-            stall = Stall.objects.get(id=stall_id)
+            # Changed from id to store_id
+            stall = Stall.objects.get(store_id=stall_id)
+            
+            # Check if stall already has an admin
+            if AdminProfile.objects.filter(stall=stall).exists():
+                messages.error(request, f'Stall {stall.name} already has an admin assigned')
+                return redirect('register_admin')
             
             if AdminProfile.objects.filter(username=username).exists():
-                return render(request, 'TriadApp/superadmin/register_admin.html', {
-                    'error': 'Username already exists',
-                    'stalls': Stall.objects.all(),
-                    'admins': AdminProfile.objects.all()
-                })
+                messages.error(request, 'Username already exists')
+                return redirect('register_admin')
             
             hashed_password = make_password(password)
             
@@ -136,21 +196,24 @@ def register_admin(request):
                 contact_number=contact_number,
                 stall=stall
             )
+            messages.success(request, 'Admin successfully registered!')
             return redirect('register_admin')
         except Stall.DoesNotExist:
-            return render(request, 'TriadApp/superadmin/register_admin.html', {
-                'error': 'Stall not found',
-                'stalls': Stall.objects.all(),
-                'admins': AdminProfile.objects.all()
-            })
+            messages.error(request, 'Stall not found')
+            return redirect('register_admin')
 
-    # Get all stalls and admins for the template
-    stalls = Stall.objects.all()
+    # Modify the stalls query to only get stalls without admins
+    stalls = Stall.objects.exclude(
+        store_id__in=AdminProfile.objects.values_list('stall__store_id', flat=True)
+    )
     admins = AdminProfile.objects.all()
     return render(request, 'TriadApp/superadmin/register_admin.html', {
         'stalls': stalls,
         'admins': admins
     })
+
+
+
 
 
 @superuser_required
@@ -284,14 +347,17 @@ def register_admin(request):
         stall_id = request.POST.get('stall')
 
         try:
-            stall = Stall.objects.get(id=stall_id)
+            # Changed from id to store_id
+            stall = Stall.objects.get(store_id=stall_id)
+            
+            # Check if stall already has an admin
+            if AdminProfile.objects.filter(stall=stall).exists():
+                messages.error(request, f'Stall {stall.name} already has an admin assigned')
+                return redirect('register_admin')
             
             if AdminProfile.objects.filter(username=username).exists():
-                return render(request, 'TriadApp/superadmin/register_admin.html', {
-                    'error': 'Username already exists',
-                    'stalls': Stall.objects.all(),
-                    'admins': AdminProfile.objects.all()
-                })
+                messages.error(request, 'Username already exists')
+                return redirect('register_admin')
             
             hashed_password = make_password(password)
             
@@ -307,16 +373,16 @@ def register_admin(request):
                 contact_number=contact_number,
                 stall=stall
             )
+            messages.success(request, 'Admin successfully registered!')
             return redirect('register_admin')
         except Stall.DoesNotExist:
-            return render(request, 'TriadApp/superadmin/register_admin.html', {
-                'error': 'Stall not found',
-                'stalls': Stall.objects.all(),
-                'admins': AdminProfile.objects.all()
-            })
+            messages.error(request, 'Stall not found')
+            return redirect('register_admin')
 
-    # Get all stalls and admins for the template
-    stalls = Stall.objects.all()
+    # Modify the stalls query to only get stalls without admins
+    stalls = Stall.objects.exclude(
+        store_id__in=AdminProfile.objects.values_list('stall__store_id', flat=True)
+    )
     admins = AdminProfile.objects.all()
     return render(request, 'TriadApp/superadmin/register_admin.html', {
         'stalls': stalls,

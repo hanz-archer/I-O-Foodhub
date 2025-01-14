@@ -1,11 +1,83 @@
 from django.contrib import admin
-from .models import Stall
-from django.contrib.auth.models import AbstractUser
+from django.contrib.auth.admin import UserAdmin
+from .models import CustomUser, Stall, AdminProfile
 from django.utils.html import format_html
-from django.db import models
 
-from django.contrib import admin
-from .models import AdminProfile
+@admin.register(CustomUser)
+class CustomUserAdmin(UserAdmin):
+    list_display = (
+        'username', 
+        'email', 
+        'first_name', 
+        'middle_name', 
+        'last_name', 
+        'gender',
+        'birthdate',
+        'phone',
+        'is_staff',
+        'profile_image_preview'
+    )
+    
+    list_filter = ('is_staff', 'is_superuser', 'gender', 'birthdate')
+    search_fields = ('username', 'first_name', 'last_name', 'email', 'phone')
+    ordering = ('username',)
+
+    # Add the custom fields to the fieldsets
+    fieldsets = (
+        (None, {'fields': ('username', 'password')}),
+        ('Personal info', {
+            'fields': (
+                'first_name',
+                'middle_name',
+                'last_name',
+                'email',
+                'gender',
+                'birthdate',
+                'phone',
+                'address',
+                'profile_image'
+            )
+        }),
+        ('Permissions', {
+            'fields': (
+                'is_active',
+                'is_staff',
+                'is_superuser',
+                'groups',
+                'user_permissions'
+            )
+        }),
+        ('Important dates', {'fields': ('last_login', 'date_joined')}),
+    )
+
+    # Add the custom fields to the add form
+    add_fieldsets = (
+        (None, {
+            'classes': ('wide',),
+            'fields': (
+                'username',
+                'password1',
+                'password2',
+                'first_name',
+                'middle_name',
+                'last_name',
+                'email',
+                'gender',
+                'birthdate',
+                'phone',
+                'address',
+                'profile_image',
+                'is_staff',
+                'is_superuser'
+            )
+        }),
+    )
+
+    def profile_image_preview(self, obj):
+        if obj.profile_image:
+            return format_html('<img src="{}" style="width: 50px; height: 50px;" />', obj.profile_image.url)
+        return "No Image"
+    profile_image_preview.short_description = 'Profile Image'
 
 
 @admin.register(Stall)
@@ -17,7 +89,6 @@ class StallAdmin(admin.ModelAdmin):
             return format_html('<img src="{}" style="width: 50px; height: 50px;" />', obj.logo.url)
         return "No Logo"
     logo_preview.short_description = "Logo"
-
 
 
 @admin.register(AdminProfile)

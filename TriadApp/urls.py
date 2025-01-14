@@ -1,7 +1,5 @@
 from django.urls import path
-from . import views
-from . import products
-from . import accounts
+from . import views, accounts, products
 
 
 urlpatterns = [
@@ -20,5 +18,8 @@ urlpatterns = [
     path('edit_admin/', accounts.edit_admin, name='edit_admin'),
     path('delete_admin/<int:admin_id>/', accounts.delete_admin, name='delete_admin'),
     path('logout/', views.logout_view, name='logout'),
+    path('super-admin/profile/', accounts.super_admin_profile, name='super_admin_profile'),
+    path('super-admin/profile/update/', accounts.update_super_admin_profile, name='update_super_admin_profile'),
+    path('update_super_admin_profile/', accounts.update_super_admin_profile, name='update_super_admin_profile'),
 ]
         

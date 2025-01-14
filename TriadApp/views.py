@@ -10,6 +10,7 @@ from .decorators import superuser_required
 from django.contrib.auth import logout
 from django.shortcuts import redirect
 from django.contrib import messages
+from django.http import JsonResponse
 
 
 def index(request):
@@ -99,3 +100,39 @@ def employee_login(request):
             messages.error(request, 'Invalid credentials or not authorized as Superadmin.')
     
     return render(request, 'TriadApp/login.html')
+
+@superuser_required
+def super_admin_profile(request):
+    return render(request, 'TriadApp/superadmin/super_admin_profile.html', {
+        'user': request.user
+    })
+
+@superuser_required
+def update_super_admin_profile(request):
+    if request.method == 'POST':
+        user = request.user
+        
+        # Update profile image if provided
+        if 'profile_image' in request.FILES:
+            user.profile_image = request.FILES['profile_image']
+        
+        # Update other fields
+        user.firstname = request.POST.get('firstname', user.firstname)
+        user.middle_name = request.POST.get('middle_name', user.middle_name)
+        user.lastname = request.POST.get('lastname', user.lastname)
+        user.birthdate = request.POST.get('birthdate', user.birthdate)
+        user.address = request.POST.get('address', user.address)
+        user.username = request.POST.get('username', user.username)
+        user.email = request.POST.get('email', user.email)
+        
+        # Update password if provided
+        if request.POST.get('password'):
+            user.set_password(request.POST['password'])
+        
+        try:
+            user.save()
+            return JsonResponse({'success': True})
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': str(e)})
+    
+    return JsonResponse({'success': False, 'message': 'Invalid request method'})
