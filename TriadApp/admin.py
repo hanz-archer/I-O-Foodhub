@@ -20,9 +20,28 @@ class StallAdmin(admin.ModelAdmin):
 
 
 
-
-
 @admin.register(AdminProfile)
 class AdminProfileAdmin(admin.ModelAdmin):
-    # Automatically display all fields
-    list_display = [field.name for field in AdminProfile._meta.fields]
+    list_display = (
+        'username',
+        'firstname',
+        'middle_initial',
+        'lastname',
+        'age',
+        'birthdate',
+        'address',
+        'contact_number',
+        'get_store_id',
+        'get_stall_name'
+    )
+    search_fields = ('username', 'firstname', 'lastname', 'contact_number')
+    list_filter = ('stall', 'age', 'birthdate')
+    ordering = ('username',)
+
+    def get_store_id(self, obj):
+        return obj.stall.store_id
+    get_store_id.short_description = 'Store ID'
+
+    def get_stall_name(self, obj):
+        return obj.stall.name
+    get_stall_name.short_description = 'Stall Name'
