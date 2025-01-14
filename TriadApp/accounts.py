@@ -5,39 +5,43 @@ from django.contrib.auth.hashers import make_password
 from django.shortcuts import render, get_object_or_404
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
+from django.urls import reverse
 
 
 from .models import Stall
 
 def add_stall(request):
+    # First check if this is a redirect from a successful submission
+    if request.method == "GET" and request.GET.get("success"):
+        context = {
+            "success": True,
+            "message": request.GET.get("message"),
+            "stalls": Stall.objects.all()
+        }
+        return render(request, "TriadApp/superadmin/add_stall.html", context)
+
     if request.method == "POST":
         name = request.POST.get("name")
         contact_number = request.POST.get("contact_number")
-        logo = request.FILES.get("logo")  # For file uploads
+        logo = request.FILES.get("logo")
         
         try:
-            # Create and save the stall with is_active defaulting to True
             stall = Stall(name=name, logo=logo, contact_number=contact_number)
             stall.save()
-
-            context = {
-                "success": True,
-                "message": "Stall created successfully!",
-                "store_id": stall.store_id,
-            }
+            # Redirect after successful POST
+            return redirect(f"{reverse('add_stall')}?success=true&message=Stall added successfully")
         except Exception as e:
             context = {
                 "success": False,
                 "message": f"Error: {str(e)}",
+                "stalls": Stall.objects.all()
             }
-    else:
-        context = {}
+            return render(request, "TriadApp/superadmin/add_stall.html", context)
 
-    # Retrieve all stalls to display in the table
-    stalls = Stall.objects.all()
-    context["stalls"] = stalls
-
-    return render(request, "TriadApp/superadmin/add_stall.html", context)
+    # Regular GET request
+    return render(request, "TriadApp/superadmin/add_stall.html", {
+        "stalls": Stall.objects.all()
+    })
 
 
 

@@ -6,14 +6,30 @@
     <title>Add Stall</title>
     <!-- Include SweetAlert library -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        // Replace the existing window.onload function
+        window.onload = function() {
+            // Only show the alert if we're coming from a redirect
+            if (performance.navigation.type !== 1) {  // 1 is TYPE_RELOAD
+                const urlParams = new URLSearchParams(window.location.search);
+                const success = urlParams.get('success');
+                const message = urlParams.get('message');
+                
+                if (success === 'true') {
+                    Swal.fire('Success', message || 'Stall added successfully!', 'success')
+                        .then(() => {
+                            // Clean up the URL after showing the alert
+                            window.history.replaceState({}, document.title, window.location.pathname);
+                        });
+                }
+            }
+        };
+    </script>
 </head>
 <body>
     <h1>Add a New Stall</h1>
 
-    {% if success %}
-        <p style="color: green;">{{ message }}</p>
-        <p>Store ID: {{ store_id }}</p>
-    {% elif message %}
+    {% if message and not success %}
         <p style="color: red;">{{ message }}</p>
     {% endif %}
 
@@ -143,9 +159,7 @@
                         <input type="file" id="logo" name="logo"><br><br>
     
                         <label for="is_active">Active:</label>
-                        <input type="checkbox" name="is_active" ${isActive === 'true' ? 'checked' : ''}><br><br>
-    
-                        <button type="submit">Save Changes</button>
+                        <input type="checkbox" name="is_active" ${isActive === 'true' ? 'checked' : ''}>
                     </form>
                 `,
                 showCancelButton: true,
@@ -159,13 +173,22 @@
                     }).then(response => response.json())
                     .then(data => {
                         if (data.success) {
-                            Swal.fire('Success', 'Stall updated successfully!', 'success');
-                            location.reload();  // Reload the page to reflect changes
+                            return data; // Return the data to be used in the next then()
                         } else {
-                            Swal.fire('Error', data.message, 'error');
+                            throw new Error(data.message);
                         }
                     }).catch(error => {
-                        Swal.fire('Error', 'An error occurred!', 'error');
+                        Swal.showValidationMessage(error.message || 'An error occurred!');
+                    });
+                }
+            }).then((result) => {
+                if (result.value && result.value.success) {
+                    return Swal.fire({
+                        title: 'Success',
+                        text: 'Stall updated successfully!',
+                        icon: 'success'
+                    }).then(() => {
+                        location.reload();  // Only reload after user clicks OK
                     });
                 }
             });
