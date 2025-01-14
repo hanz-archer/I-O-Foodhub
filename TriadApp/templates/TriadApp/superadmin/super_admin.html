@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Admin Panel{% endblock %}</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.16/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
     {% block extra_head %}{% endblock %}
 </head>
 
@@ -49,7 +50,143 @@
         <!-- Main Content -->
         <div class="flex-1 ml-64 p-6">
             {% block content %}
-           Dashboard
+            <div class="p-6">
+                <h1 class="text-3xl font-bold text-gray-800 mb-8 text-center">Sales Data Dashboard</h1>
+                
+                <!-- Charts Grid - Changed to stack vertically -->
+                <div class="grid grid-cols-1 gap-6 max-w-4xl mx-auto">
+                    <!-- Weekly Sales Chart -->
+                    <div class="bg-white p-6 rounded-lg shadow-lg">
+                        <h2 class="text-xl font-semibold mb-4">Weekly Sales by Stall</h2>
+                        <div id="weeklyChart"></div>
+                    </div>
+
+                    <!-- Monthly Sales Chart -->
+                    <div class="bg-white p-6 rounded-lg shadow-lg">
+                        <h2 class="text-xl font-semibold mb-4">Monthly Sales</h2>
+                        <div id="monthlyChart"></div>
+                    </div>
+
+                    <!-- Annual Sales Chart -->
+                    <div class="bg-white p-6 rounded-lg shadow-lg">
+                        <h2 class="text-xl font-semibold mb-4">Annual Sales</h2>
+                        <div id="annualChart"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Add charts initialization script -->
+            <script>
+                // Weekly Sales Chart
+                const weeklyOptions = {
+                    series: [{
+                        name: 'Stall A',
+                        data: [30, 40, 35, 50, 49, 60, 70]
+                    }, {
+                        name: 'Stall B',
+                        data: [20, 35, 40, 45, 39, 52, 65]
+                    }, {
+                        name: 'Stall C',
+                        data: [25, 30, 45, 55, 44, 48, 60]
+                    }],
+                    chart: {
+                        type: 'bar',
+                        height: 350,
+                        stacked: true,
+                        toolbar: {
+                            show: true
+                        },
+                    },
+                    plotOptions: {
+                        bar: {
+                            horizontal: false,
+                            columnWidth: '55%',
+                            endingShape: 'rounded'
+                        },
+                    },
+                    xaxis: {
+                        categories: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                    },
+                    legend: {
+                        position: 'top'
+                    },
+                    fill: {
+                        opacity: 1
+                    }
+                };
+
+                // Monthly Sales Chart
+                const monthlyOptions = {
+                    series: [{
+                        name: 'Monthly Sales',
+                        data: [10, 41, 35, 51, 49, 62, 69, 91, 148, 35, 51, 49]
+                    }],
+                    chart: {
+                        height: 350,
+                        type: 'line',
+                        zoom: {
+                            enabled: false
+                        }
+                    },
+                    stroke: {
+                        curve: 'smooth'
+                    },
+                    xaxis: {
+                        categories: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+                    },
+                    title: {
+                        text: '2024 Monthly Sales Trend',
+                        align: 'left'
+                    }
+                };
+
+                // Annual Sales Chart
+                const annualOptions = {
+                    series: [{
+                        name: 'Annual Sales',
+                        data: [2.3, 3.1, 4.0, 4.5, 5.1]
+                    }],
+                    chart: {
+                        height: 350,
+                        type: 'area',
+                        zoom: {
+                            enabled: false
+                        }
+                    },
+                    dataLabels: {
+                        enabled: false
+                    },
+                    stroke: {
+                        curve: 'smooth'
+                    },
+                    xaxis: {
+                        categories: ['2020', '2021', '2022', '2023', '2024']
+                    },
+                    title: {
+                        text: 'Annual Sales Growth',
+                        align: 'left'
+                    },
+                    fill: {
+                        type: 'gradient',
+                        gradient: {
+                            shadeIntensity: 1,
+                            opacityFrom: 0.7,
+                            opacityTo: 0.9,
+                            stops: [0, 90, 100]
+                        }
+                    }
+                };
+
+                // Initialize the charts
+                const weeklyChart = new ApexCharts(document.querySelector("#weeklyChart"), weeklyOptions);
+                const monthlyChart = new ApexCharts(document.querySelector("#monthlyChart"), monthlyOptions);
+                const annualChart = new ApexCharts(document.querySelector("#annualChart"), annualOptions);
+
+                // Render the charts
+                weeklyChart.render();
+                monthlyChart.render();
+                annualChart.render();
+            </script>
             {% endblock %}
         </div>
     </div>
