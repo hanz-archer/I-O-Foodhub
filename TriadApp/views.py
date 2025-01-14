@@ -2,7 +2,7 @@
 from django.shortcuts import render, redirect
 from django.contrib import messages
 import pyrebase
-from .firebase import auth, database
+
 from django.contrib.auth import authenticate, login
 
 def index(request):
