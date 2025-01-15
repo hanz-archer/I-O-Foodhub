@@ -21,5 +21,9 @@ urlpatterns = [
     path('super-admin/profile/', accounts.super_admin_profile, name='super_admin_profile'),
     path('super-admin/profile/update/', accounts.update_super_admin_profile, name='update_super_admin_profile'),
     path('update_super_admin_profile/', accounts.update_super_admin_profile, name='update_super_admin_profile'),
+    path('forgot-password/', views.forgot_password, name='forgot_password'),
+    path('send-otp/', views.send_otp, name='send_otp'),
+    path('verify-otp/', views.verify_otp, name='verify_otp'),
+    path('reset-password/', views.reset_password, name='reset_password'),
 ]
         

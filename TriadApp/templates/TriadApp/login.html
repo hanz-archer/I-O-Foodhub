@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - TriadApp</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body class="bg-gray-100 flex flex-col min-h-screen">
 
@@ -100,6 +101,11 @@
                                     class="w-full text-sm text-gray-800 bg-gray-200 focus:bg-gray-100 pl-5 pr-10 py-4 rounded-xl outline-blue-600" 
                                     placeholder="Enter password">
                             </div>
+                            <div class="text-right mt-2">
+                                <a href="{% url 'forgot_password' %}" class="text-blue-600 hover:underline text-sm">
+                                    Forgot Password?
+                                </a>
+                            </div>
                         </div>
 
                         <div class="mt-8">
@@ -155,6 +161,111 @@
             document.getElementById('login-form-section').classList.add('hidden');
             document.getElementById('cards-section').classList.remove('hidden');
         }
+
+        // CapsLock detection for login password
+        const loginPassword = document.getElementById('password');
+        const capsLockMessage = document.createElement('h3');
+        capsLockMessage.className = 'text-red-600 text-xl font-bold mt-2 hidden';
+        capsLockMessage.textContent = 'Caps Lock is ON';
+        loginPassword.closest('.relative').insertAdjacentElement('afterend', capsLockMessage);
+
+        loginPassword.addEventListener('keydown', function(event) {
+            if (event.getModifierState('CapsLock')) {
+                capsLockMessage.classList.remove('hidden');
+            } else {
+                capsLockMessage.classList.add('hidden');
+            }
+        });
+
+        // Form submission handling
+        const loginForm = document.getElementById('login-form');
+        loginForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            try {
+                const response = await fetch(this.action, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    }
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Success!',
+                        text: data.message,
+                        timer: 1500,
+                        showConfirmButton: false
+                    }).then(() => {
+                        window.location.href = data.redirect;
+                    });
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: data.message,
+                        confirmButtonColor: '#3085d6'
+                    });
+                }
+            } catch (error) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Something went wrong. Please try again.',
+                    confirmButtonColor: '#3085d6'
+                });
+            }
+        });
     </script>
+
+    {% if messages %}
+    {% for message in messages %}
+        <script type="text/javascript">
+            document.addEventListener('DOMContentLoaded', function() {
+                // Create an array to hold messages
+                var messages = [];
+
+                // Push each message into the array
+                messages.push({
+                    'tag': '{{ message.tags|escapejs }}',
+                    'text': '{{ message|escapejs }}'
+                });
+
+                // Iterate through the messages array and display SweetAlert for errors
+                messages.forEach(function(message) {
+                    if (message.tag === 'error') {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Oops...',
+                            text: message.text,
+                            confirmButtonColor: '#3085d6'
+                        });
+                    } else if (message.tag === 'success') {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Success!',
+                            text: message.text,
+                            timer: 3000,
+                            showConfirmButton: false
+                        });
+                    } else if (message.tag === 'info') {
+                        Swal.fire({
+                            icon: 'info',
+                            title: 'Note:',
+                            text: message.text,
+                            timer: 3000,
+                            showConfirmButton: false
+                        });
+                    }
+                });
+            });
+        </script>
+    {% endfor %}
+    {% endif %}
 </body>
 </html>
