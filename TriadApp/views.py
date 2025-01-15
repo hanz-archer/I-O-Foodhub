@@ -63,7 +63,7 @@ def superadmin_login(request):
             login(request, user)
             return JsonResponse({
                 'success': True,
-                'message': f"Welcome, {user.firstname}!",
+                'message': f"Welcome, {user.first_name}!",
                 'redirect': reverse('super_admin')
             })
         else:
