@@ -160,9 +160,9 @@
             } else if (role === 'Admin') {
                 formTitle.textContent = 'Admin Login';
                 loginForm.setAttribute('action', '{% url "admin_login" %}');
-                usernameField.closest('.mb-4').classList.remove('hidden');
+                usernameField.closest('.mb-5').classList.remove('hidden');
                 usernameField.removeAttribute('disabled');
-                emailField.closest('.mb-4').classList.add('hidden');
+                emailField.closest('.mb-5').classList.add('hidden');
                 emailField.setAttribute('disabled', 'disabled');
             } else if (role === 'Employee') {
                 formTitle.textContent = 'Employee Login';

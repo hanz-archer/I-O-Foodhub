@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
-from .models import CustomUser, Stall, AdminProfile
+from .models import CustomUser, Stall, AdminProfile, Supplier
 from django.utils.html import format_html
 from django.contrib.auth.hashers import make_password
 
@@ -149,3 +149,55 @@ class AdminProfileAdmin(admin.ModelAdmin):
         if 'password' in form.changed_data:
             obj.password = make_password(form.cleaned_data['password'])
         super().save_model(request, obj, form, change) 
+
+@admin.register(Supplier)
+class SupplierAdmin(admin.ModelAdmin):
+    list_display = (
+        'firstname',
+        'middle_initial',
+        'lastname',
+        'contact_person',
+        'license_number',
+        'contact_number',
+        'email_address',
+        'contract_start_date',
+        'contract_end_date',
+        'stall'
+    )
+    
+    list_filter = ('stall', 'contract_start_date', 'contract_end_date')
+    search_fields = (
+        'firstname', 
+        'lastname', 
+        'contact_person', 
+        'license_number', 
+        'email_address',
+        'contact_number'
+    )
+    ordering = ('lastname', 'firstname')
+
+    fieldsets = (
+        ('Personal Information', {
+            'fields': (
+                'firstname',
+                'middle_initial',
+                'lastname',
+                'contact_person',
+                'license_number',
+            )
+        }),
+        ('Contact Information', {
+            'fields': (
+                'address',
+                'contact_number',
+                'email_address',
+            )
+        }),
+        ('Contract Details', {
+            'fields': (
+                'stall',
+                'contract_start_date',
+                'contract_end_date',
+            )
+        }),
+    ) 

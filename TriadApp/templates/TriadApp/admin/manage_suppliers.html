@@ -1,0 +1,250 @@
+{% extends 'TriadApp/admin/admin.html' %}
+
+{% block content %}
+<!-- Add SweetAlert CDN -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<div class="flex-1 p-6 h-screen">
+    <div class="w-full mx-auto h-full flex flex-col">
+        <!-- Header with Add Button -->
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-2xl font-bold">Supplier Management</h2>
+            <button onclick="openAddModal()" 
+                    class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-md flex items-center gap-2">
+                <span>+</span> Add New Supplier
+            </button>
+        </div>
+
+        <!-- Suppliers List -->
+        <div class="bg-white/80 rounded-lg overflow-hidden shadow">
+            <table class="min-w-full">
+                <thead>
+                    <tr class="bg-gray-800 text-white">
+                        <th class="px-6 py-4 text-left text-sm font-semibold">
+                            Name
+                        </th>
+                        <th class="px-6 py-4 text-left text-sm font-semibold">
+                            Contact Person
+                        </th>
+                        <th class="px-6 py-4 text-left text-sm font-semibold">
+                            Contact Info
+                        </th>
+                        <th class="px-6 py-4 text-left text-sm font-semibold">
+                            Contract Period
+                        </th>
+                        <th class="px-6 py-4 text-left text-sm font-semibold">
+                            Actions
+                        </th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    {% for supplier in suppliers %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 text-sm text-gray-900">
+                            {{ supplier.firstname }} {{ supplier.middle_initial }}. {{ supplier.lastname }}
+                        </td>
+                        <td class="px-6 py-4 text-sm text-gray-600">
+                            {{ supplier.contact_person }}
+                        </td>
+                        <td class="px-6 py-4 text-sm text-gray-600">
+                            <div>{{ supplier.contact_number }}</div>
+                            <div>{{ supplier.email_address }}</div>
+                        </td>
+                        <td class="px-6 py-4 text-sm text-gray-600">
+                            {{ supplier.contract_start_date|date:"M d, Y" }} - 
+                            {{ supplier.contract_end_date|date:"M d, Y" }}
+                        </td>
+                        <td class="px-6 py-4 text-sm">
+                            <button onclick="openEditModal('{{ supplier.id }}')" 
+                                    class="text-blue-600 hover:text-blue-700 font-medium mr-3">
+                                Edit
+                            </button>
+                            <button onclick="confirmDelete('{{ supplier.id }}', '{{ supplier.firstname|escapejs }} {{ supplier.lastname|escapejs }}')" 
+                                    class="text-red-600 hover:text-red-700 font-medium">
+                                Delete
+                            </button>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="px-6 py-4 text-center text-sm text-gray-500">
+                            No suppliers registered yet.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Add/Edit Modal -->
+<div id="supplierModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
+    <div class="relative top-20 mx-auto p-5 border w-3/4 shadow-lg rounded-md bg-white">
+        <div class="mt-3">
+            <h3 class="text-lg font-medium leading-6 text-gray-900 mb-4" id="modalTitle">Add New Supplier</h3>
+            <form id="supplierForm" method="POST">
+                {% csrf_token %}
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2">First Name</label>
+                        <input type="text" name="firstname" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500">
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2">Middle Initial</label>
+                        <input type="text" name="middle_initial" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500">
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2">Last Name</label>
+                        <input type="text" name="lastname" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500">
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2">Contact Person</label>
+                        <input type="text" name="contact_person" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500">
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2">License Number</label>
+                        <input type="text" name="license_number" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500">
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2">Contact Number</label>
+                        <input type="text" name="contact_number" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500">
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2">Email Address</label>
+                        <input type="email" name="email_address" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500">
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2">Contract Start Date</label>
+                        <input type="date" name="contract_start_date" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500">
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2">Contract End Date</label>
+                        <input type="date" name="contract_end_date" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500">
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2">Address</label>
+                        <input type="text" name="address" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500">
+                    </div>
+                </div>
+                
+                <div class="flex items-center justify-end space-x-4 mt-4">
+                    <button type="button" onclick="closeModal()" 
+                            class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded">
+                        Cancel
+                    </button>
+                    <button type="submit" 
+                            class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                        Save Supplier
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Modal Functions
+    function openAddModal() {
+        document.getElementById('modalTitle').textContent = 'Add New Supplier';
+        document.getElementById('supplierForm').reset();
+        document.getElementById('supplierModal').classList.remove('hidden');
+    }
+
+    function openEditModal(supplierId) {
+        document.getElementById('modalTitle').textContent = 'Edit Supplier';
+        // Fetch supplier data and populate form
+        fetch(`/edit_supplier/${supplierId}/`)
+            .then(response => response.json())
+            .then(data => {
+                // Populate form fields with data
+                for (const [key, value] of Object.entries(data)) {
+                    const field = document.querySelector(`[name="${key}"]`);
+                    if (field) field.value = value;
+                }
+                document.getElementById('supplierModal').classList.remove('hidden');
+            });
+    }
+
+    function closeModal() {
+        document.getElementById('supplierModal').classList.add('hidden');
+    }
+
+    // Delete Confirmation
+    function confirmDelete(supplierId, supplierName) {
+        Swal.fire({
+            title: 'Delete Supplier',
+            text: `Are you sure you want to delete ${supplierName}?`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Yes, delete it!'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                fetch(`/delete_supplier/${supplierId}/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        Swal.fire('Deleted!', data.message, 'success')
+                            .then(() => window.location.reload());
+                    } else {
+                        Swal.fire('Error!', data.message, 'error');
+                    }
+                });
+            }
+        });
+    }
+
+    // Form submission
+    document.getElementById('supplierForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const formData = new FormData(this);
+        
+        Swal.fire({
+            title: 'Save Supplier',
+            text: 'Are you sure you want to save these changes?',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Yes, save it!',
+            cancelButtonText: 'No, cancel'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                fetch(this.action, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        Swal.fire('Success!', data.message, 'success')
+                            .then(() => window.location.reload());
+                    } else {
+                        Swal.fire('Error!', data.message, 'error');
+                    }
+                });
+            }
+        });
+    });
+
+    // Close modal when clicking outside
+    document.getElementById('supplierModal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeModal();
+        }
+    });
+
+    
+</script>
+{% endblock %}

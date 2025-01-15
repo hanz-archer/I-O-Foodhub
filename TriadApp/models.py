@@ -23,13 +23,13 @@ class AdminProfile(models.Model):
     birthdate = models.DateField()
     address = models.TextField()
     username = models.CharField(max_length=50, unique=True)
-    email = models.EmailField(max_length=254, unique=True, default='', blank=True)  # Updated email field
-    password = models.CharField(max_length=100)  # Remember to hash passwords
+    email = models.EmailField(max_length=254, unique=True, default='', blank=True)
+    password = models.CharField(max_length=100)
     contact_number = models.CharField(max_length=15)
     stall = models.ForeignKey('Stall', on_delete=models.CASCADE, related_name="admins", to_field='store_id')
+  
 
     def clean(self):
-        # Check if this stall already has an admin
         if self.stall:
             existing_admin = AdminProfile.objects.filter(stall=self.stall).exclude(id=self.id).exists()
             if existing_admin:
@@ -37,7 +37,6 @@ class AdminProfile(models.Model):
 
     def save(self, *args, **kwargs):
         self.clean()
-        # Set default email if not provided
         if not self.email:
             self.email = f"{self.username}@default.com"
         super().save(*args, **kwargs)
@@ -71,4 +70,33 @@ class CustomUser(AbstractUser):
 
     class Meta:
         db_table = 'custom_user'
+
+class Supplier(models.Model):
+    stall = models.ForeignKey(Stall, on_delete=models.CASCADE)
+    firstname = models.CharField(max_length=100)
+    middle_initial = models.CharField(max_length=1)
+    lastname = models.CharField(max_length=100)
+    contact_person = models.CharField(max_length=200)
+    license_number = models.CharField(max_length=50, unique=True)
+    address = models.TextField(max_length=50)
+    contact_number = models.CharField(max_length=15)
+    email_address = models.EmailField()
+    contract_start_date = models.DateField()
+    contract_end_date = models.DateField()
+
+    def clean(self):
+        # Validate dates
+        if self.contract_start_date and self.contract_end_date:
+            if self.contract_start_date > self.contract_end_date:
+                raise ValidationError({
+                    'contract_start_date': 'Start date cannot be after end date',
+                    'contract_end_date': 'End date cannot be before start date'
+                })
+
+    def save(self, *args, **kwargs):
+        self.clean()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.firstname} {self.lastname} - {self.stall.name}"
 

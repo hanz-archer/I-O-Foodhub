@@ -6,12 +6,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Panel - Inventory</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.16/dist/tailwind.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css?family=Poppins:600&display=swap" rel="stylesheet">
-    <style>
-        * {
-            font-family: 'Poppins', sans-serif;
-        }
-    </style>
 </head>
 
 <body class="bg-gray-100">
@@ -21,23 +15,43 @@
         <!-- Sidebar Section -->
         <div class="w-64 h-screen bg-gray-800 text-white">
             <div class="flex flex-col items-center py-4">
+                <!-- Add stall logo -->
+                <div class="w-24 h-24 rounded-full overflow-hidden mb-4 bg-white">
+                    {% if stall.logo %}
+                        <img src="{{ stall.logo.url }}" alt="{{ stall.name }} Logo" class="w-full h-full object-cover">
+                    {% else %}
+                        <!-- Fallback if no logo is uploaded -->
+                        <div class="w-full h-full bg-gray-300 flex items-center justify-center">
+                            <span class="text-gray-600 text-xl">{{ stall.name|slice:":1" }}</span>
+                        </div>
+                    {% endif %}
+                </div>
+                <!-- Admin's name -->
+                <div class="text-center mb-4">
+                    <p class="text-lg">{{ admin.firstname }} {{ admin.middle_initial }} {{ admin.lastname }}</p>
+                </div>
                 <h1 class="text-2xl font-bold">Admin Panel</h1>
                 <nav class="mt-6">
                     <ul>
                         <li>
-                            <a href="{% url 'admin' %}" class="block py-2.5 px-6 text-lg hover:bg-gray-700">Dashboard</a>
+                            <a href="{% url 'admin_dashboard' %}" class="block py-2.5 px-6 text-lg hover:bg-gray-700">Dashboard</a>
                         </li>
                         <li>
-                            <a href="{% url 'inventory' %}" class="block py-2.5 px-6 text-lg hover:bg-gray-700">Inventory</a>
+                            <a href="#" class="block py-2.5 px-6 text-lg hover:bg-gray-700">Inventory</a>
                         </li>
                         <li>
-                            <a href="#" class="block py-2.5 px-6 text-lg hover:bg-gray-700">Orders</a>
+                            <a href="#" class="block py-2.5 px-6 text-lg hover:bg-gray-700">Item</a>
                         </li>
                         <li>
-                            <a href="#" class="block py-2.5 px-6 text-lg hover:bg-gray-700">Reports</a>
+                            <a href="{% url 'manage_suppliers' %}" class="block py-2.5 px-6 text-lg hover:bg-gray-700">Suppliers</a>
                         </li>
                         <li>
-                            <a href="#" class="block py-2.5 px-6 text-lg hover:bg-gray-700">Settings</a>
+                            <a href="{% url 'logout' %}" 
+                               class="block py-2.5 px-6 text-lg text-red-400 hover:bg-gray-700 hover:text-red-300">
+                                <div class="flex items-center">
+                                    <span>Logout</span>
+                                </div>
+                            </a>
                         </li>
                     </ul>
                 </nav>
@@ -45,12 +59,14 @@
         </div>
 
         <!-- Main Content -->
-        <div class="flex-1 p-6">
-            <h2 class="text-3xl font-semibold">Inventory Management</h2>
-            <p class="mt-4 text-lg">Manage the products in your inventory.</p>
+        <div class="flex-1 p-6 min-h-screen">
+            <div class="flex justify-between items-center mb-6">
+               
+             
+            </div>
 
             {% block content %}
-            <!-- Dynamic Content Goes Here -->
+            
             {% endblock %}
         </div>
     </div>

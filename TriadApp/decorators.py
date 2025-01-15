@@ -19,3 +19,17 @@ def superuser_required(view_func):
         # If both checks pass, allow access to the view
         return view_func(request, *args, **kwargs)
     return _wrapped_view
+
+
+
+def admin_required(view_func):
+    @wraps(view_func)
+    def _wrapped_view(request, *args, **kwargs):
+        # Check if user is logged in as admin
+        if not request.session.get('is_admin'):
+            messages.error(request, 'Please log in as admin to access this page.')
+            return redirect('admin_login')
+        
+        # If check passes, allow access to the view
+        return view_func(request, *args, **kwargs)
+    return _wrapped_view

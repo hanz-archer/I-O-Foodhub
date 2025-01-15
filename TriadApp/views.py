@@ -31,8 +31,6 @@ def super_admin(request):
     return render(request, 'TriadApp/superadmin/super_admin.html')
 
 
-def admin(request):
-    return render(request, 'TriadApp/admin/admin.html')
 
 
 def login_page(request):
@@ -87,6 +85,11 @@ def admin_login(request):
             if check_password(password, admin_profile.password):
                 request.session['admin_id'] = admin_profile.id
                 request.session['admin_name'] = f"{admin_profile.firstname} {admin_profile.lastname}"
+                request.session['admin_id'] = admin_profile.id
+                request.session['admin_name'] = f"{admin_profile.firstname} {admin_profile.lastname}"
+                request.session['stall_id'] = str(admin_profile.stall.store_id)
+                request.session['is_admin'] = True  # Flag to identify admin users
+                
                 return JsonResponse({
                     'success': True,
                     'message': f"Welcome, {admin_profile.firstname}!",
