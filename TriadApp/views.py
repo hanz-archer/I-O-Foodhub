@@ -173,7 +173,10 @@ def send_otp(request):
             admin = AdminProfile.objects.filter(email=email).first()
             
             if not user and not admin:
-                return JsonResponse({'success': False, 'message': 'Email not found'})
+                return JsonResponse({
+                    'success': False, 
+                    'message': 'No account found with this email address'
+                })
             
             # Determine user type for the message
             user_type = 'Super Admin' if (user and user.is_superuser) else \
@@ -232,10 +235,17 @@ def send_otp(request):
             )
             
             return JsonResponse({'success': True})
+            
         except Exception as e:
-            return JsonResponse({'success': False, 'message': str(e)})
+            return JsonResponse({
+                'success': False,
+                'message': 'An error occurred while processing your request'
+            })
     
-    return JsonResponse({'success': False, 'message': 'Invalid request method'})
+    return JsonResponse({
+        'success': False,
+        'message': 'Invalid request method'
+    })
 
 @csrf_exempt
 def verify_otp(request):
