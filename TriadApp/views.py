@@ -28,7 +28,12 @@ def index(request):
 
 @superuser_required
 def super_admin(request):
-    return render(request, 'TriadApp/superadmin/super_admin.html')
+    # Get the fresh user data from the database
+    super_admin = CustomUser.objects.get(id=request.user.id)
+    context = {
+        'super_admin': super_admin
+    }
+    return render(request, 'TriadApp/superadmin/super_admin.html', context)
 
 
 
@@ -41,7 +46,7 @@ def login_page(request):
 def logout_view(request):
     logout(request)
     messages.success(request, 'You have been successfully logged out.')
-    return redirect('index')  # Replace 'login' with your login URL name
+    return redirect('login')  # Replace 'login' with your login URL name
 
 
 

@@ -26,7 +26,7 @@
 
         <!-- Form Section -->
         <div class="bg-white rounded-lg shadow-md p-6 mb-8">
-            <form method="POST" enctype="multipart/form-data" class="space-y-6">
+            <form id="addStallForm" method="POST" enctype="multipart/form-data" class="space-y-6" onsubmit="return confirmAddStall(event)">
                 {% csrf_token %}
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
@@ -136,161 +136,206 @@
     {% endblock %}
 </body>
 {% block extra_scripts %}
+{{ block.super }}
 <script>
-    // Replace the existing window.onload function
-    window.onload = function() {
-        // Only show the alert if we're coming from a redirect
-        if (performance.navigation.type !== 1) {  // 1 is TYPE_RELOAD
-            const urlParams = new URLSearchParams(window.location.search);
-            const success = urlParams.get('success');
-            const message = urlParams.get('message');
-            
-            if (success === 'true') {
-                Swal.fire('Success', message || 'Stall added successfully!', 'success')
-                    .then(() => {
-                        // Clean up the URL after showing the alert
-                        window.history.replaceState({}, document.title, window.location.pathname);
-                    });
-            }
-        }
-    };
-</script>
-<script>
-    // SweetAlert delete confirmation
-    function confirmDelete(url) {
-        Swal.fire({
-            title: 'Are you sure?',
-            text: "You won't be able to revert this!",
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#d33',
-            cancelButtonColor: '#3085d6',
-            confirmButtonText: 'Yes, delete it!'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                fetch(url, {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRFToken': '{{ csrf_token }}'
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        Swal.fire('Deleted!', data.message, 'success')
-                            .then(() => location.reload());
-                    } else {
-                        Swal.fire('Error!', data.message, 'error');
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    Swal.fire('Error!', 'An error occurred while deleting the stall', 'error');
-                });
-            }
-        });
-    }
-
-    // SweetAlert edit form with pre-filled values
-    function editStall(element) {
-        const storeId = element.dataset.storeId;
-        const name = element.dataset.name;
-        const contactNumber = element.dataset.contact;
-        const isActive = element.dataset.active;
-        Swal.fire({
-            title: 'Edit Stall',
-            html: `
-                <form id="editForm" method="POST" enctype="multipart/form-data">
-                    {% csrf_token %}
-                    <input type="hidden" name="store_id" value="${storeId}">
-                    <label for="name">Stall Name:</label><br>
-                    <input type="text" id="name" name="name" value="${name}" required><br><br>
-
-                    <label for="contact_number">Contact Number:</label><br>
-                    <input type="text" id="contact_number" name="contact_number" value="${contactNumber}" required><br><br>
-
-                    <label for="logo">Logo:</label><br>
-                    <input type="file" id="logo" name="logo"><br><br>
-
-                    <label for="is_active">Active:</label>
-                    <input type="checkbox" name="is_active" ${isActive === 'true' ? 'checked' : ''}>
-                </form>
-            `,
-            showCancelButton: true,
-            confirmButtonText: 'Save Changes',
-            cancelButtonText: 'Cancel',
-            preConfirm: () => {
-                const formData = new FormData(document.getElementById('editForm'));
-                return fetch("{% url 'edit_stall' %}", {
-                    method: 'POST',
-                    body: formData
-                }).then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        return data; // Return the data to be used in the next then()
-                    } else {
-                        throw new Error(data.message);
-                    }
-                }).catch(error => {
-                    Swal.showValidationMessage(error.message || 'An error occurred!');
-                });
-            }
-        }).then((result) => {
-            if (result.value && result.value.success) {
-                return Swal.fire({
-                    title: 'Success',
-                    text: 'Stall updated successfully!',
-                    icon: 'success'
-                }).then(() => {
-                    location.reload();  // Only reload after user clicks OK
-                });
-            }
-        });
-    }
-
-    // Updated search function
-    function searchStalls() {
-        const searchText = document.getElementById('stallSearch').value.toLowerCase();
-        const statusFilter = document.getElementById('statusFilter').value;
-        const table = document.getElementById('stallsTable');
-        const rows = table.getElementsByTagName('tr');
-
-        // Start from index 1 to skip the header row
-        for (let i = 1; i < rows.length; i++) {
-            const row = rows[i];
-            const cells = row.getElementsByTagName('td');
-            let found = false;
-
-            // Skip the search if this is the "No stalls available" row
-            if (cells.length === 1 && cells[0].textContent.trim() === 'No stalls available') {
-                continue;
-            }
-
-            // Get the status cell (assuming it's the 5th column, index 4)
-            const statusCell = cells[4].textContent.trim().toLowerCase();
-            
-            // Check if the row matches both search text and status filter
-            const matchesStatus = statusFilter === 'all' || 
-                                (statusFilter === 'active' && statusCell === 'active') ||
-                                (statusFilter === 'inactive' && statusCell === 'inactive');
-
-            // Search through each cell in the row
-            for (let cell of cells) {
-                const text = cell.textContent || cell.innerText;
-                if (text.toLowerCase().indexOf(searchText) > -1) {
-                    found = true;
-                    break;
+function confirmAddStall(event) {
+    event.preventDefault();
+    
+    const form = event.target;
+    const formData = new FormData(form);
+    
+    // Show confirmation dialog
+    Swal.fire({
+        title: 'Confirm Add Stall',
+        html: `
+            <div class="text-left">
+                <p><strong>Stall Name:</strong> ${formData.get('name')}</p>
+                <p><strong>Contact Number:</strong> ${formData.get('contact_number')}</p>
+                <p><strong>Logo:</strong> ${formData.get('logo').name}</p>
+            </div>
+        `,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#3085d6',
+        cancelButtonColor: '#d33',
+        confirmButtonText: 'Yes, add stall',
+        cancelButtonText: 'Cancel'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            // Show loading state
+            Swal.fire({
+                title: 'Adding Stall...',
+                text: 'Please wait while we process your request',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
                 }
-            }
+            });
+            
+            // Submit the form
+            form.submit();
+        }
+    });
+    
+    return false;
+}
 
-            // Show/hide the row based on both search text and status filter
-            row.style.display = (found && matchesStatus) ? '' : 'none';
+// Handle success message after redirect
+window.onload = function() {
+    if (performance.navigation.type !== 1) {  // Not a page reload
+        const urlParams = new URLSearchParams(window.location.search);
+        const success = urlParams.get('success');
+        const message = urlParams.get('message');
+        
+        if (success === 'true') {
+            Swal.fire({
+                title: 'Success!',
+                text: message || 'Stall added successfully!',
+                icon: 'success',
+                confirmButtonColor: '#3085d6'
+            }).then(() => {
+                // Clean up the URL after showing the alert
+                window.history.replaceState({}, document.title, window.location.pathname);
+            });
         }
     }
+};
 
-    // Add event listeners for both search input and status filter
-    document.getElementById('stallSearch').addEventListener('keyup', searchStalls);
-    document.getElementById('statusFilter').addEventListener('change', searchStalls);
+// SweetAlert delete confirmation
+function confirmDelete(url) {
+    Swal.fire({
+        title: 'Are you sure?',
+        text: "You won't be able to revert this!",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Yes, delete it!'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire('Deleted!', data.message, 'success')
+                        .then(() => location.reload());
+                } else {
+                    Swal.fire('Error!', data.message, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                Swal.fire('Error!', 'An error occurred while deleting the stall', 'error');
+            });
+        }
+    });
+}
+
+// SweetAlert edit form with pre-filled values
+function editStall(element) {
+    const storeId = element.dataset.storeId;
+    const name = element.dataset.name;
+    const contactNumber = element.dataset.contact;
+    const isActive = element.dataset.active;
+    Swal.fire({
+        title: 'Edit Stall',
+        html: `
+            <form id="editForm" method="POST" enctype="multipart/form-data">
+                {% csrf_token %}
+                <input type="hidden" name="store_id" value="${storeId}">
+                <label for="name">Stall Name:</label><br>
+                <input type="text" id="name" name="name" value="${name}" required><br><br>
+
+                <label for="contact_number">Contact Number:</label><br>
+                <input type="text" id="contact_number" name="contact_number" value="${contactNumber}" required><br><br>
+
+                <label for="logo">Logo:</label><br>
+                <input type="file" id="logo" name="logo"><br><br>
+
+                <label for="is_active">Active:</label>
+                <input type="checkbox" name="is_active" ${isActive === 'true' ? 'checked' : ''}>
+            </form>
+        `,
+        showCancelButton: true,
+        confirmButtonText: 'Save Changes',
+        cancelButtonText: 'Cancel',
+        preConfirm: () => {
+            const formData = new FormData(document.getElementById('editForm'));
+            return fetch("{% url 'edit_stall' %}", {
+                method: 'POST',
+                body: formData
+            }).then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    return data; // Return the data to be used in the next then()
+                } else {
+                    throw new Error(data.message);
+                }
+            }).catch(error => {
+                Swal.showValidationMessage(error.message || 'An error occurred!');
+            });
+        }
+    }).then((result) => {
+        if (result.value && result.value.success) {
+            return Swal.fire({
+                title: 'Success',
+                text: 'Stall updated successfully!',
+                icon: 'success'
+            }).then(() => {
+                location.reload();  // Only reload after user clicks OK
+            });
+        }
+    });
+}
+
+// Updated search function
+function searchStalls() {
+    const searchText = document.getElementById('stallSearch').value.toLowerCase();
+    const statusFilter = document.getElementById('statusFilter').value;
+    const table = document.getElementById('stallsTable');
+    const rows = table.getElementsByTagName('tr');
+
+    // Start from index 1 to skip the header row
+    for (let i = 1; i < rows.length; i++) {
+        const row = rows[i];
+        const cells = row.getElementsByTagName('td');
+        let found = false;
+
+        // Skip the search if this is the "No stalls available" row
+        if (cells.length === 1 && cells[0].textContent.trim() === 'No stalls available') {
+            continue;
+        }
+
+        // Get the status cell (assuming it's the 5th column, index 4)
+        const statusCell = cells[4].textContent.trim().toLowerCase();
+        
+        // Check if the row matches both search text and status filter
+        const matchesStatus = statusFilter === 'all' || 
+                            (statusFilter === 'active' && statusCell === 'active') ||
+                            (statusFilter === 'inactive' && statusCell === 'inactive');
+
+        // Search through each cell in the row
+        for (let cell of cells) {
+            const text = cell.textContent || cell.innerText;
+            if (text.toLowerCase().indexOf(searchText) > -1) {
+                found = true;
+                break;
+            }
+        }
+
+        // Show/hide the row based on both search text and status filter
+        row.style.display = (found && matchesStatus) ? '' : 'none';
+    }
+}
+
+// Add event listeners for both search input and status filter
+document.getElementById('stallSearch').addEventListener('keyup', searchStalls);
+document.getElementById('statusFilter').addEventListener('change', searchStalls);
 </script>
 {% endblock %}
 
