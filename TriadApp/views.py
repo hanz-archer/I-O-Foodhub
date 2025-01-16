@@ -4,7 +4,7 @@ import pyrebase
 from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.contrib.auth.hashers import check_password
-from .models import AdminProfile, CustomUser
+from .models import AdminProfile, CustomUser, LoginHistory
 from django.contrib.auth import authenticate, login
 from .decorators import superuser_required
 from django.contrib.auth import logout
@@ -50,6 +50,8 @@ def login_view(request):
     if request.method == 'POST':
         username = request.POST.get('username')
         password = request.POST.get('password')
+        ip_address = get_client_ip(request)
+        user_agent = request.META.get('HTTP_USER_AGENT', '')
         
         # Check login attempts
         attempts_key = f'login_attempts_{username}'
@@ -71,55 +73,59 @@ def login_view(request):
             else:
                 cache.delete(block_key)
                 cache.delete(block_time_key)
-
+        
+        # Get system information
+        system_info = LoginHistory.get_system_info()
+        
+        # Create base login history entry with attempt count
+        current_attempts = cache.get(attempts_key, 0)
+        login_history = LoginHistory(
+            username=username,
+            ip_address=ip_address,
+            user_agent=user_agent,
+            attempt_count=current_attempts + 1,
+            **system_info
+        )
+        
         try:
             # Try CustomUser (Superadmin/Employee) first
             try:
                 user = CustomUser.objects.get(username=username)
                 if user.check_password(password):
-                    if user.is_superuser:
-                        login(request, user)
-                        cache.delete(attempts_key)
-                        cache.delete(block_key)
-                        cache.delete(block_time_key)
-                        return JsonResponse({
-                            'success': True,
-                            'redirect_url': reverse('super_admin'),
-                            'name': user.first_name
-                        })
-                    else:
-                        login(request, user)
-                        cache.delete(attempts_key)
-                        cache.delete(block_key)
-                        cache.delete(block_time_key)
-                        return JsonResponse({
-                            'success': True,
-                            'redirect_url': reverse('employee_dashboard'),
-                            'name': user.first_name
-                        })
-            except CustomUser.DoesNotExist:
-                pass
-
-            # Try AdminProfile
-            try:
-                admin = AdminProfile.objects.get(username=username)
-                
-                # Check if stall is active
-                if not admin.stall.is_active:
-                    return JsonResponse({
-                        'success': False,
-                        'message': f'Access denied. {admin.stall.name} is currently inactive. Please contact the super admin.',
-                        'stall_inactive': True
-                    })
-                
-                if check_password(password, admin.password):
-                    request.session['admin_id'] = admin.id
-                    request.session['admin_name'] = f"{admin.firstname} {admin.lastname}"
-                    request.session['stall_id'] = str(admin.stall.store_id)
-                    request.session['is_admin'] = True
+                    login(request, user)
+                    # Log successful login
+                    login_history.user = user
+                    login_history.status = 'success'
+                    login_history.save()
+                    
+                    # Clear attempt counters on success
                     cache.delete(attempts_key)
                     cache.delete(block_key)
                     cache.delete(block_time_key)
+                    
+                    return JsonResponse({
+                        'success': True,
+                        'redirect_url': reverse('super_admin' if user.is_superuser else 'employee_dashboard'),
+                        'name': user.first_name
+                    })
+            except CustomUser.DoesNotExist:
+                pass
+                
+            # Try AdminProfile
+            try:
+                admin = AdminProfile.objects.get(username=username)
+                if check_password(password, admin.password):
+                    # Log successful login
+                    login_history.admin_profile = admin
+                    login_history.status = 'success'
+                    login_history.save()
+                    
+                    # Clear attempt counters on success
+                    cache.delete(attempts_key)
+                    cache.delete(block_key)
+                    cache.delete(block_time_key)
+                    
+                    request.session['admin_id'] = admin.id
                     return JsonResponse({
                         'success': True,
                         'redirect_url': reverse('admin_dashboard'),
@@ -127,28 +133,31 @@ def login_view(request):
                     })
             except AdminProfile.DoesNotExist:
                 pass
-
-            # If we get here, increment failed attempts
-            attempts = cache.get(attempts_key, 0) + 1
-            cache.set(attempts_key, attempts, 300)
-
-            if attempts >= 3:
+            
+            # If we get here, login failed
+            current_attempts += 1
+            cache.set(attempts_key, current_attempts, 300)  # Expire after 5 minutes
+            
+            # Check if we should block the account
+            if current_attempts >= 3:
                 cache.set(block_key, True, 300)
                 cache.set(block_time_key, time.time(), 300)
-                cache.delete(attempts_key)
-                return JsonResponse({
-                    'success': False,
-                    'locked': True,
-                    'message': 'Too many failed attempts. Account locked for 5 minutes.',
-                    'remaining_time': 300
-                })
+                login_history.is_blocked = True
+                login_history.block_expires = timezone.now() + timedelta(minutes=5)
+            
+            login_history.status = 'failed'
+            login_history.save()
             
             return JsonResponse({
                 'success': False,
-                'message': f'Invalid credentials. {3 - attempts} attempts remaining.'
+                'message': 'Invalid credentials',
+                'attempts_left': 3 - current_attempts if current_attempts < 3 else 0
             })
-
+            
         except Exception as e:
+            # Log error
+            login_history.status = 'error'
+            login_history.save()
             return JsonResponse({
                 'success': False,
                 'message': str(e)

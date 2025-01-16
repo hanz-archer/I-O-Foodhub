@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
-from .models import CustomUser, Stall, AdminProfile, Supplier, Item, ItemSupply
+from .models import CustomUser, Stall, AdminProfile, Supplier, Item, ItemSupply, LoginHistory
 from django.utils.html import format_html
 from django.contrib.auth.hashers import make_password
 from django import forms
@@ -233,3 +233,51 @@ class ItemSupplyAdmin(admin.ModelAdmin):
         return f"{obj.item.stall.name} ({obj.item.stall.store_id})"
     stall_info.short_description = 'Stall'
     stall_info.admin_order_field = 'item__stall__name'
+
+@admin.register(LoginHistory)
+class LoginHistoryAdmin(admin.ModelAdmin):
+    list_display = ('username', 'login_time', 'status', 'ip_address', 'attempt_count', 
+                   'is_blocked', 'system_details', 'wifi_connection')
+    list_filter = ('status', 'is_blocked', 'login_time', 'operating_system')
+    search_fields = ('username', 'ip_address', 'wifi_name')
+    readonly_fields = ('login_time', 'user_agent', 'operating_system', 'os_version', 
+                      'processor_info', 'gpu_info', 'wifi_name')
+    
+    def system_details(self, obj):
+        return f"OS: {obj.operating_system} {obj.os_version}\nCPU: {obj.processor_info}\nGPU: {obj.gpu_info}"
+    system_details.short_description = 'System Info'
+    
+    def wifi_connection(self, obj):
+        return obj.wifi_name or 'Not Available'
+    wifi_connection.short_description = 'WiFi Network'
+    
+    fieldsets = (
+        ('Basic Information', {
+            'fields': ('username', 'login_time', 'status', 'ip_address', 'attempt_count')
+        }),
+        ('Block Status', {
+            'fields': ('is_blocked', 'block_expires')
+        }),
+        ('System Details', {
+            'classes': ('collapse',),
+            'fields': (
+                'operating_system', 
+                'os_version', 
+                'processor_info', 
+                'gpu_info',
+                'wifi_name',
+                'user_agent'
+            )
+        })
+    )
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    class Media:
+        css = {
+            'all': ('admin/css/system_info.css',)
+        }
