@@ -4,7 +4,8 @@ from . import views, accounts, products, stall_admins
 
 urlpatterns = [
     path('', views.index, name='index'),
-    path('login', views.login_page, name='login'),
+    path('login/', views.login_view, name='login'),
+    path('logout/', views.logout_view, name='logout'),
    
     
     path('superadmin_login', views.superadmin_login, name='superadmin_login'),
@@ -36,5 +37,6 @@ urlpatterns = [
     path('send-otp/', views.send_otp, name='send_otp'),
     path('verify-otp/', views.verify_otp, name='verify_otp'),
     path('reset-password/', views.reset_password, name='reset_password'),
+    path('send-contact/', views.send_contact, name='send_contact'),
 ]
         
