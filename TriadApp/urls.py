@@ -11,7 +11,7 @@ urlpatterns = [
     path('admin_login', views.admin_login, name='admin_login'),
     path('employee_login', views.employee_login, name='employee_login'),
 
-    
+
     path('super_admin', views.super_admin, name='super_admin'),
     path('logout/', views.logout_view, name='logout'),
 
@@ -32,6 +32,12 @@ urlpatterns = [
     path('edit_supplier/<int:supplier_id>/', stall_admins.edit_supplier, name='edit_supplier'),
     path('delete_supplier/<int:supplier_id>/', stall_admins.delete_supplier, name='delete_supplier'),
 
+    path('stall-admin/items/', stall_admins.item_management, name='item_management'),
+    path('stall-admin/items/edit/<int:item_id>/', stall_admins.edit_item, name='edit_item'),
+    path('stall-admin/items/delete/<int:item_id>/', stall_admins.delete_item, name='delete_item'),
+   
+  
+    
     path('forgot-password/', views.forgot_password, name='forgot_password'),
     path('send-otp/', views.send_otp, name='send_otp'),
     path('verify-otp/', views.verify_otp, name='verify_otp'),

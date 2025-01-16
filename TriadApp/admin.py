@@ -1,8 +1,13 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
-from .models import CustomUser, Stall, AdminProfile, Supplier
+from .models import CustomUser, Stall, AdminProfile, Supplier, Item, ItemSupply
 from django.utils.html import format_html
 from django.contrib.auth.hashers import make_password
+from django import forms
+
+class ItemSupplyInline(admin.TabularInline):
+    model = ItemSupply
+    extra = 1  # Number of empty forms to display
 
 @admin.register(CustomUser)
 class CustomUserAdmin(UserAdmin):
@@ -201,3 +206,17 @@ class SupplierAdmin(admin.ModelAdmin):
             )
         }),
     ) 
+
+
+
+
+@admin.register(Item)
+class ItemAdmin(admin.ModelAdmin):
+    list_display = ('item_id', 'name', 'quantity', 'cost', 'created_at')
+    search_fields = ('item_id', 'name')
+    inlines = [ItemSupplyInline]
+
+@admin.register(ItemSupply)
+class ItemSupplyAdmin(admin.ModelAdmin):
+    list_display = ('item', 'supplier', 'name')
+    list_filter = ('supplier',)

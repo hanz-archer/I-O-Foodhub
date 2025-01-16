@@ -156,6 +156,7 @@
 
     function openEditModal(supplierId) {
         document.getElementById('modalTitle').textContent = 'Edit Supplier';
+        document.getElementById('supplierForm').dataset.supplierId = supplierId;
         // Fetch supplier data and populate form
         fetch(`/edit_supplier/${supplierId}/`)
             .then(response => response.json())
@@ -208,9 +209,11 @@
     document.getElementById('supplierForm').addEventListener('submit', function(e) {
         e.preventDefault();
         const formData = new FormData(this);
+        const supplierId = this.dataset.supplierId;
+        const url = supplierId ? `/edit_supplier/${supplierId}/` : this.action;
         
         Swal.fire({
-            title: 'Save Supplier',
+            title: supplierId ? 'Update Supplier' : 'Save Supplier',
             text: 'Are you sure you want to save these changes?',
             icon: 'question',
             showCancelButton: true,
@@ -218,11 +221,12 @@
             cancelButtonText: 'No, cancel'
         }).then((result) => {
             if (result.isConfirmed) {
-                fetch(this.action, {
+                fetch(url, {
                     method: 'POST',
                     body: formData,
                     headers: {
                         'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
                     }
                 })
                 .then(response => response.json())
