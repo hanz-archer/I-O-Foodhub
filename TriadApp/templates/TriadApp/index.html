@@ -1,3 +1,4 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -10,43 +11,281 @@
         * {
             font-family: 'Poppins', sans-serif;
         }
+        .sidebar {
+            transition: all 0.3s ease-in-out;
+        }
     </style>
 </head>
-<body class="bg-gradient-to-br from-blue-100 to-white min-h-screen">
-    <div class="flex flex-col items-center justify-center min-h-screen p-4">
-        <!-- Logo Container -->
-        <div class="mb-8 text-center">
-            <h1 class="text-4xl md:text-5xl font-bold text-gray-800 mb-4">I/O Food Hub</h1>
-            <p class="text-lg text-gray-600 max-w-md mx-auto">
-                Welcome to your digital food court management system
-            </p>
+<body class="bg-[#E8E3D7]">
+    <!-- Side Navbar -->
+    <nav class="fixed top-0 left-0 h-full w-64 bg-white shadow-lg z-50">
+        <div class="flex flex-col h-full">
+            <!-- Logo and DateTime Section -->
+            <div class="p-4 border-b border-gray-200">
+                <img src="{% static 'images/triad.jpg' %}" alt="Logo" class="h-20 mx-auto">
+                <div class="text-center mt-3 text-gray-600">
+                    <div id="currentTime" class="text-lg font-semibold"></div>
+                    <div id="currentDate" class="text-sm mb-4"></div>
+                </div>
+            </div>
+            
+            <!-- Navigation Links - Below DateTime -->
+            <div class="mt-8">
+                <ul class="space-y-8 text-center">
+                    <li>
+                        <a href="#about" class="flex items-center justify-center text-gray-700 hover:text-blue-600 transition-colors duration-200">
+                            <span class="text-lg font-semibold">About Us</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#contact" class="flex items-center justify-center text-gray-700 hover:text-blue-600 transition-colors duration-200">
+                            <span class="text-lg font-semibold">Contact Us</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
         </div>
+    </nav>
 
-        <!-- Get Started Button -->
-        <a href="{% url 'superadmin_login' %}" 
-           class="inline-flex items-center px-8 py-3 text-lg font-semibold text-white 
-                  bg-blue-600 rounded-lg shadow-lg hover:bg-blue-700 
-                  transform transition duration-200 hover:scale-105 
-                  focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
-            Get Started
-            <svg xmlns="http://www.w3.org/2000/svg" 
-                 class="h-5 w-5 ml-2" 
-                 viewBox="0 0 20 20" 
-                 fill="currentColor">
-                <path fill-rule="evenodd" 
-                      d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" 
-                      clip-rule="evenodd" />
-            </svg>
-        </a>
+    <!-- Main Content -->
+    <div class="ml-64 min-h-screen p-8 flex items-center justify-center">
+        <div class="bg-white rounded-xl shadow-2xl p-8 max-w-4xl w-full">
+            <div class="flex flex-col items-center justify-center space-y-8">
+                <!-- Logo Container -->
+                <div class="text-center">
+                    <h1 class="text-4xl md:text-5xl font-bold text-gray-800 mb-4">Welcome to I/O Food Hub Dalaguete</h1>
+                    <p class="text-lg text-gray-600 max-w-md mx-auto">
+                        Tap here to chose your profile to login
+                    </p>
+                </div>
 
-        <!-- Footer -->
-        <div class="absolute bottom-4 text-center text-gray-500">
-            <p>&copy; 2024 I/O Food Hub. All rights reserved.</p>
+                <!-- Get Started Button -->
+                <a href="{% url 'superadmin_login' %}" 
+                   class="inline-flex items-center px-8 py-3 text-lg font-semibold text-white 
+                          bg-blue-600 rounded-lg shadow-lg hover:bg-blue-700 
+                          transform transition duration-200 hover:scale-105">
+                    Get Started
+                    <svg xmlns="http://www.w3.org/2000/svg" 
+                         class="h-5 w-5 ml-2" 
+                         viewBox="0 0 20 20" 
+                         fill="currentColor">
+                        <path fill-rule="evenodd" 
+                              d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" 
+                              clip-rule="evenodd" />
+                    </svg>
+                </a>
+            </div>
         </div>
     </div>
 
-    <!-- Optional: Add some decorative elements -->
-    <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-500 to-purple-500"></div>
+    <!-- Footer -->
+    <div class="ml-64 text-center py-4 text-gray-500">
+        <p>&copy; 2024 I/O Food Hub. All rights reserved.</p>
+    </div>
+
+    <!-- Contact Form Modal -->
+    <div id="contactModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-8 max-w-md w-full mx-4">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-gray-800">Contact Us</h2>
+                <button onclick="closeContactForm()" class="text-gray-500 hover:text-gray-700">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            
+            <form id="contactForm" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Name</label>
+                    <input type="text" id="name" required
+                           class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Email</label>
+                    <input type="email" id="email" required
+                           class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Message</label>
+                    <textarea id="message" rows="4" required
+                              class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"></textarea>
+                </div>
+                
+                <button type="submit" id="submitContactBtn" class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors flex items-center justify-center">
+                    <span id="submitBtnText">Send Message</span>
+                    <div id="submitSpinner" class="hidden ml-2">
+                        <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                    </div>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- About Us Section with Map -->
+    <div id="aboutModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-8 max-w-4xl w-full mx-4">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-gray-800">About Us</h2>
+                <button onclick="closeAboutModal()" class="text-gray-500 hover:text-gray-700">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            
+            <div class="space-y-6">
+                <p class="text-gray-600">
+                    Welcome to I/O Food Hub Dalaguete! We are your premier food court destination in Dalaguete, Cebu.
+                </p>
+                
+                <!-- Google Map -->
+                <div class="w-full h-96 rounded-lg overflow-hidden">
+                    <iframe 
+                        src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3937.5791745885387!2d123.53366291475803!3d9.761818993001684!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x33abb9fc4d89915d%3A0x9f2c1258252d9f17!2sI%2FO%20Food%20Hub!5e0!3m2!1sen!2sph!4v1707555144412!5m2!1sen!2sph"
+                        width="100%"
+                        height="100%"
+                        style="border:0;"
+                        allowfullscreen=""
+                        loading="lazy"
+                        referrerpolicy="no-referrer-when-downgrade">
+                    </iframe>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add this script before closing body tag -->
+    <script>
+        function updateDateTime() {
+            const timeElement = document.getElementById('currentTime');
+            const dateElement = document.getElementById('currentDate');
+            
+            const now = new Date();
+            
+            // Format time
+            timeElement.textContent = now.toLocaleTimeString('en-US', { 
+                hour: '2-digit', 
+                minute: '2-digit',
+                second: '2-digit'
+            });
+            
+            // Format date
+            dateElement.textContent = now.toLocaleDateString('en-US', { 
+                weekday: 'long',
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+            });
+        }
+
+        // Update immediately and then every second
+        updateDateTime();
+        setInterval(updateDateTime, 1000);
+    </script>
+
+    <!-- Add this script before closing body tag -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        // Contact form functionality
+        function showContactForm() {
+            document.getElementById('contactModal').classList.remove('hidden');
+            document.getElementById('contactModal').classList.add('flex');
+        }
+
+        function closeContactForm() {
+            document.getElementById('contactModal').classList.add('hidden');
+            document.getElementById('contactModal').classList.remove('flex');
+        }
+
+        // Update the contact link to use the new function
+        document.querySelector('a[href="#contact"]').addEventListener('click', function(e) {
+            e.preventDefault();
+            showContactForm();
+        });
+
+        // About Us Modal Functions
+        function showAboutModal() {
+            document.getElementById('aboutModal').classList.remove('hidden');
+            document.getElementById('aboutModal').classList.add('flex');
+        }
+
+        function closeAboutModal() {
+            document.getElementById('aboutModal').classList.add('hidden');
+            document.getElementById('aboutModal').classList.remove('flex');
+        }
+
+        // Update the about link click handler
+        document.querySelector('a[href="#about"]').addEventListener('click', function(e) {
+            e.preventDefault();
+            showAboutModal();
+        });
+
+        // Update the contact form submission with loading state
+        document.getElementById('contactForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const submitBtn = document.getElementById('submitContactBtn');
+            const submitBtnText = document.getElementById('submitBtnText');
+            const submitSpinner = document.getElementById('submitSpinner');
+            
+            // Show loading state
+            submitBtn.disabled = true;
+            submitBtnText.textContent = 'Sending...';
+            submitSpinner.classList.remove('hidden');
+            
+            try {
+                const response = await fetch('/send-contact/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify({
+                        name: document.getElementById('name').value,
+                        email: document.getElementById('email').value,
+                        message: document.getElementById('message').value
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Success!',
+                        text: 'Your message has been sent successfully.',
+                        timer: 3000,
+                        showConfirmButton: false
+                    });
+                    closeContactForm();
+                    this.reset();
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: data.message || 'Something went wrong. Please try again.'
+                    });
+                }
+            } catch (error) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Something went wrong. Please try again.'
+                });
+            } finally {
+                // Reset loading state
+                submitBtn.disabled = false;
+                submitBtnText.textContent = 'Send Message';
+                submitSpinner.classList.add('hidden');
+            }
+        });
+    </script>
 </body>
 </html>
         

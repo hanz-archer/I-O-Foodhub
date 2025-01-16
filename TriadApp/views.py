@@ -20,6 +20,10 @@ from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.hashers import make_password
 from django.contrib.auth import get_user_model
 from django.urls import reverse
+from django.core.cache import cache
+from datetime import datetime, timedelta
+from django.utils import timezone
+import time
 
 User = get_user_model()
 
@@ -60,19 +64,67 @@ def superadmin_login(request):
         username = request.POST.get('username')
         password = request.POST.get('password')
         
-        user = authenticate(request, username=username, password=password)
+        # Check login attempts
+        attempts_key = f'login_attempts_{username}'
+        block_key = f'login_blocked_{username}'
+        block_time_key = f'login_blocked_time_{username}'
         
-        if user is not None and user.is_superuser:
-            login(request, user)
-            return JsonResponse({
-                'success': True,
-                'message': f"Welcome, {user.first_name}!",
-                'redirect': reverse('super_admin')
-            })
-        else:
+        # Check if user is blocked
+        if cache.get(block_key):
+            current_time = time.time()
+            block_start_time = cache.get(block_time_key)
+            remaining_time = int(300 - (current_time - block_start_time))
+            
+            if remaining_time > 0:
+                return JsonResponse({
+                    'success': False,
+                    'locked': True,
+                    'message': 'Too many failed attempts. Account locked.',
+                    'remaining_time': remaining_time
+                })
+            else:
+                # Reset if time has expired
+                cache.delete(block_key)
+                cache.delete(block_time_key)
+
+        try:
+            user = authenticate(request, username=username, password=password)
+            
+            if user is not None and user.is_superuser:
+                cache.delete(attempts_key)
+                cache.delete(block_key)
+                cache.delete(block_time_key)
+                
+                login(request, user)
+                return JsonResponse({
+                    'success': True,
+                    'message': f"Welcome, {user.first_name}!",
+                    'redirect_url': reverse('super_admin')
+                })
+            else:
+                attempts = cache.get(attempts_key, 0) + 1
+                cache.set(attempts_key, attempts, 300)
+
+                if attempts >= 3:
+                    cache.set(block_key, True, 300)
+                    cache.set(block_time_key, time.time(), 300)
+                    cache.delete(attempts_key)
+                    return JsonResponse({
+                        'success': False,
+                        'locked': True,
+                        'message': 'Too many failed attempts. Account locked for 5 minutes.',
+                        'remaining_time': 300
+                    })
+                
+                return JsonResponse({
+                    'success': False,
+                    'message': f'Invalid credentials. {3 - attempts} attempts remaining.'
+                })
+                
+        except Exception as e:
             return JsonResponse({
                 'success': False,
-                'message': 'Invalid credentials or not authorized as Superadmin'
+                'message': str(e)
             })
     
     return render(request, 'TriadApp/login.html')
@@ -84,27 +136,58 @@ def admin_login(request):
     if request.method == 'POST':
         username = request.POST.get('username')
         password = request.POST.get('password')
+        
+        # Check login attempts
+        attempts_key = f'login_attempts_{username}'
+        block_key = f'login_blocked_{username}'
+        
+        # Check if user is blocked
+        if cache.get(block_key):
+            time_remaining = cache.ttl(block_key)
+            return JsonResponse({
+                'success': False,
+                'locked': True,
+                'message': f'Account locked. Try again in {time_remaining} seconds.',
+                'remaining_time': time_remaining
+            })
 
         try:
             admin_profile = AdminProfile.objects.get(username=username)
             if check_password(password, admin_profile.password):
-                request.session['admin_id'] = admin_profile.id
-                request.session['admin_name'] = f"{admin_profile.firstname} {admin_profile.lastname}"
+                # Reset attempts on successful login
+                cache.delete(attempts_key)
+                cache.delete(block_key)
+                
                 request.session['admin_id'] = admin_profile.id
                 request.session['admin_name'] = f"{admin_profile.firstname} {admin_profile.lastname}"
                 request.session['stall_id'] = str(admin_profile.stall.store_id)
-                request.session['is_admin'] = True  # Flag to identify admin users
+                request.session['is_admin'] = True
                 
                 return JsonResponse({
                     'success': True,
                     'message': f"Welcome, {admin_profile.firstname}!",
-                    'redirect': reverse('admin')
+                    'redirect_url': reverse('admin_dashboard')
                 })
             else:
+                # Increment failed attempts
+                attempts = cache.get(attempts_key, 0) + 1
+                cache.set(attempts_key, attempts, 300)  # 5 minutes expiry
+
+                if attempts >= 3:
+                    cache.set(block_key, True, 300)  # 5 minutes block
+                    cache.delete(attempts_key)
+                    return JsonResponse({
+                        'success': False,
+                        'locked': True,
+                        'message': 'Too many failed attempts. Account locked for 5 minutes.',
+                        'remaining_time': 300
+                    })
+                
                 return JsonResponse({
                     'success': False,
-                    'message': "Invalid password"
+                    'message': f'Invalid password. {3 - attempts} attempts remaining.'
                 })
+                
         except AdminProfile.DoesNotExist:
             return JsonResponse({
                 'success': False,
@@ -317,3 +400,237 @@ def reset_password(request):
         'success': False,
         'message': 'Invalid request method'
     })
+
+@csrf_exempt
+def send_contact(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            name = data.get('name')
+            email = data.get('email')
+            message = data.get('message')
+            
+            html_message = f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <style>
+                    body {{
+                        font-family: Arial, sans-serif;
+                        line-height: 1.6;
+                        color: #333;
+                    }}
+                    .container {{
+                        max-width: 600px;
+                        margin: 0 auto;
+                        padding: 20px;
+                        background-color: #f9f9f9;
+                        border-radius: 10px;
+                    }}
+                    .header {{
+                        background-color: #1a56db;
+                        color: white;
+                        padding: 20px;
+                        text-align: center;
+                        border-radius: 10px 10px 0 0;
+                    }}
+                    .content {{
+                        background-color: white;
+                        padding: 20px;
+                        border-radius: 0 0 10px 10px;
+                        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                    }}
+                    .footer {{
+                        text-align: center;
+                        margin-top: 20px;
+                        color: #666;
+                        font-size: 12px;
+                    }}
+                    .info-label {{
+                        font-weight: bold;
+                        color: #1a56db;
+                    }}
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="header">
+                        <h1>New Contact Form Submission</h1>
+                    </div>
+                    <div class="content">
+                        <p><span class="info-label">Name:</span> {name}</p>
+                        <p><span class="info-label">Email:</span> {email}</p>
+                        <p><span class="info-label">Message:</span></p>
+                        <p style="white-space: pre-line;">{message}</p>
+                    </div>
+                    <div class="footer">
+                        <p>This email was sent from the I/O Food Hub contact form.</p>
+                        <p>&copy; 2024 I/O Food Hub. All rights reserved.</p>
+                    </div>
+                </div>
+            </body>
+            </html>
+            """
+            
+            # Plain text version for email clients that don't support HTML
+            plain_message = f"""
+            New Contact Form Submission
+
+            Name: {name}
+            Email: {email}
+            Message:
+            {message}
+
+            This email was sent from the I/O Food Hub contact form.
+            """
+            
+            send_mail(
+                subject='New Contact Form Submission - I/O Food Hub',
+                message=plain_message,
+                from_email=settings.EMAIL_HOST_USER,
+                recipient_list=['kentrixcapstone@gmail.com'],
+                fail_silently=False,
+                html_message=html_message
+            )
+            
+            return JsonResponse({'success': True})
+            
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'message': str(e)
+            })
+    
+    return JsonResponse({
+        'success': False,
+        'message': 'Invalid request method'
+    })
+
+def get_client_ip(request):
+    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    if x_forwarded_for:
+        ip = x_forwarded_for.split(',')[0]
+    else:
+        ip = request.META.get('REMOTE_ADDR')
+    return ip
+
+def check_login_attempts(ip):
+    attempts = cache.get(f'login_attempts_{ip}', 0)
+    if attempts >= 3:
+        last_attempt = cache.get(f'last_attempt_{ip}')
+        if last_attempt:
+            time_passed = datetime.now() - last_attempt
+            if time_passed < timedelta(minutes=5):
+                remaining = 300 - time_passed.seconds  # 300 seconds = 5 minutes
+                return False, remaining
+    return True, 0
+
+def increment_login_attempts(ip):
+    attempts = cache.get(f'login_attempts_{ip}', 0)
+    attempts += 1
+    cache.set(f'login_attempts_{ip}', attempts, 300)  # Reset after 5 minutes
+    cache.set(f'last_attempt_{ip}', datetime.now(), 300)
+    return attempts
+
+def reset_login_attempts(ip):
+    cache.delete(f'login_attempts_{ip}')
+    cache.delete(f'last_attempt_{ip}')
+
+@csrf_exempt
+def login_view(request):
+    if request.method == 'POST':
+        username = request.POST.get('username')
+        password = request.POST.get('password')
+        
+        # Check login attempts
+        attempts_key = f'login_attempts_{username}'
+        block_key = f'login_blocked_{username}'
+        block_time_key = f'login_blocked_time_{username}'
+        
+        if cache.get(block_key):
+            current_time = time.time()
+            block_start_time = cache.get(block_time_key)
+            remaining_time = int(300 - (current_time - block_start_time))
+            
+            if remaining_time > 0:
+                return JsonResponse({
+                    'success': False,
+                    'locked': True,
+                    'message': 'Too many failed attempts. Account locked.',
+                    'remaining_time': remaining_time
+                })
+            else:
+                cache.delete(block_key)
+                cache.delete(block_time_key)
+
+        try:
+            # Try CustomUser (Superadmin/Employee) first
+            try:
+                user = CustomUser.objects.get(username=username)
+                if user.check_password(password):
+                    if user.is_superuser:
+                        login(request, user)
+                        cache.delete(attempts_key)
+                        cache.delete(block_key)
+                        cache.delete(block_time_key)
+                        return JsonResponse({
+                            'success': True,
+                            'redirect_url': reverse('super_admin')
+                        })
+                    else:
+                        login(request, user)
+                        cache.delete(attempts_key)
+                        cache.delete(block_key)
+                        cache.delete(block_time_key)
+                        return JsonResponse({
+                            'success': True,
+                            'redirect_url': reverse('employee_dashboard')
+                        })
+            except CustomUser.DoesNotExist:
+                pass
+
+            # Try AdminProfile
+            try:
+                admin = AdminProfile.objects.get(username=username)
+                if check_password(password, admin.password):
+                    request.session['admin_id'] = admin.id
+                    request.session['admin_name'] = f"{admin.firstname} {admin.lastname}"
+                    request.session['stall_id'] = str(admin.stall.store_id)
+                    request.session['is_admin'] = True
+                    cache.delete(attempts_key)
+                    cache.delete(block_key)
+                    cache.delete(block_time_key)
+                    return JsonResponse({
+                        'success': True,
+                        'redirect_url': reverse('admin_dashboard')
+                    })
+            except AdminProfile.DoesNotExist:
+                pass
+
+            # If we get here, increment failed attempts
+            attempts = cache.get(attempts_key, 0) + 1
+            cache.set(attempts_key, attempts, 300)
+
+            if attempts >= 3:
+                cache.set(block_key, True, 300)
+                cache.set(block_time_key, time.time(), 300)
+                cache.delete(attempts_key)
+                return JsonResponse({
+                    'success': False,
+                    'locked': True,
+                    'message': 'Too many failed attempts. Account locked for 5 minutes.',
+                    'remaining_time': 300
+                })
+            
+            return JsonResponse({
+                'success': False,
+                'message': f'Invalid credentials. {3 - attempts} attempts remaining.'
+            })
+
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'message': str(e)
+            })
+
+    return render(request, 'TriadApp/login.html')
