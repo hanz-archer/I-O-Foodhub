@@ -158,6 +158,7 @@ class AdminProfileAdmin(admin.ModelAdmin):
 @admin.register(Supplier)
 class SupplierAdmin(admin.ModelAdmin):
     list_display = (
+        'id',
         'firstname',
         'middle_initial',
         'lastname',

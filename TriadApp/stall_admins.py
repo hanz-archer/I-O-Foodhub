@@ -13,6 +13,7 @@ from django.urls import reverse
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
+from django.db.models import Q
 
 
 def admin_login(request):
@@ -85,13 +86,51 @@ def manage_suppliers(request):
     try:
         admin = AdminProfile.objects.get(id=admin_id)
         
+        # Handle AJAX search request
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest' and request.GET.get('search'):
+            search_query = request.GET.get('search')
+            suppliers = Supplier.objects.filter(
+                stall=admin.stall
+            ).filter(
+                Q(firstname__icontains=search_query) |
+                Q(lastname__icontains=search_query) |
+                Q(license_number__icontains=search_query) |
+                Q(contact_number__icontains=search_query) |
+                Q(email_address__icontains=search_query)
+            )
+            
+            suppliers_data = [{
+                'id': supplier.id,
+                'firstname': supplier.firstname,
+                'middle_initial': supplier.middle_initial,
+                'lastname': supplier.lastname,
+                'license_number': supplier.license_number,
+                'contact_person': supplier.contact_person,
+                'contact_number': supplier.contact_number,
+                'email_address': supplier.email_address,
+                'contract_start_date': supplier.contract_start_date.strftime('%Y-%m-%d') if supplier.contract_start_date else '',
+                'contract_end_date': supplier.contract_end_date.strftime('%Y-%m-%d') if supplier.contract_end_date else ''
+            } for supplier in suppliers]
+            
+            return JsonResponse({
+                'status': 'success',
+                'suppliers': suppliers_data
+            })
+        
         if request.method == 'POST':
             form = SupplierForm(request.POST)
             if form.is_valid():
                 try:
+                    # Check if license number exists
+                    license_number = form.cleaned_data['license_number']
+                    if Supplier.objects.filter(stall=admin.stall, license_number=license_number).exists():
+                        return JsonResponse({
+                            'status': 'error',
+                            'message': 'License number already exists!'
+                        })
+                    
                     supplier = form.save(commit=False)
                     supplier.stall = admin.stall
-                    supplier.full_clean()  # Run model validation
                     supplier.save()
                     return JsonResponse({
                         'status': 'success',
@@ -101,11 +140,6 @@ def manage_suppliers(request):
                     return JsonResponse({
                         'status': 'error',
                         'message': str(e.messages[0])
-                    })
-                except IntegrityError:
-                    return JsonResponse({
-                        'status': 'error',
-                        'message': 'License number already exists!'
                     })
             else:
                 errors = dict(form.errors.items())
@@ -129,9 +163,6 @@ def manage_suppliers(request):
 
 
 
-
-    
-
 @admin_required
 def edit_supplier(request, supplier_id):
     admin_id = request.session.get('admin_id')
@@ -146,13 +177,22 @@ def edit_supplier(request, supplier_id):
             form = SupplierForm(request.POST, instance=supplier)
             if form.is_valid():
                 try:
-                    supplier = form.save(commit=False)
-                    supplier.stall = admin.stall
-                    supplier.full_clean()
-                    supplier.save()
+                    # Get the submitted license number
+                    new_license = form.cleaned_data['license_number']
+                    
+                    # Check if it's different from the original
+                    if new_license != supplier.license_number:
+                        # Check if this license exists for any other supplier
+                        if Supplier.objects.filter(license_number=new_license).exclude(id=supplier_id).exists():
+                            return JsonResponse({
+                                'status': 'error',
+                                'message': 'This license number is already registered to another supplier.'
+                            })
+                    
+                    supplier = form.save()
                     return JsonResponse({
                         'status': 'success',
-                        'message': 'Supplier updated successfully!'
+                        'message': 'Supplier information updated successfully!'
                     })
                 except ValidationError as e:
                     return JsonResponse({
@@ -162,7 +202,7 @@ def edit_supplier(request, supplier_id):
                 except IntegrityError:
                     return JsonResponse({
                         'status': 'error',
-                        'message': 'License number already exists!'
+                        'message': 'This license number is already registered to another supplier.'
                     })
             else:
                 errors = dict(form.errors.items())
@@ -177,10 +217,10 @@ def edit_supplier(request, supplier_id):
             'middle_initial': supplier.middle_initial,
             'lastname': supplier.lastname,
             'contact_person': supplier.contact_person,
-            'license_number': supplier.license_number,
             'address': supplier.address,
             'contact_number': supplier.contact_number,
             'email_address': supplier.email_address,
+            'license_number': supplier.license_number,
             'contract_start_date': supplier.contract_start_date.strftime('%Y-%m-%d'),
             'contract_end_date': supplier.contract_end_date.strftime('%Y-%m-%d'),
         }
@@ -188,6 +228,7 @@ def edit_supplier(request, supplier_id):
         
     except AdminProfile.DoesNotExist:
         return redirect('login')
+
 
 @admin_required
 def delete_supplier(request, supplier_id):
@@ -216,6 +257,9 @@ def item_management(request):
     
     try:
         admin = AdminProfile.objects.get(id=admin_id)
+        
+        # Handle search query
+        search_query = request.GET.get('search', '')
         
         if request.method == 'POST':
             try:
@@ -280,8 +324,21 @@ def item_management(request):
                     'message': str(e)
                 })
         
-        # GET request - display form and items
-        items = Item.objects.filter(stall=admin.stall).prefetch_related(
+        # GET request - display form and items with search
+        items = Item.objects.filter(stall=admin.stall)
+        
+        if search_query:
+            items = items.filter(
+                Q(item_id__icontains=search_query) |
+                Q(name__icontains=search_query) |
+                Q(size__icontains=search_query) |
+                Q(measurement__icontains=search_query) |
+                Q(supplies__name__icontains=search_query) |  # Search in supply names
+                Q(supplies__supplier__firstname__icontains=search_query) |  # Search in supplier names
+                Q(supplies__supplier__lastname__icontains=search_query)
+            ).distinct()
+        
+        items = items.prefetch_related(
             'supplies', 'supplies__supplier'
         ).order_by('-created_at')
         
@@ -292,7 +349,7 @@ def item_management(request):
                 'supplier_name': f"{supply.supplier.firstname} {supply.supplier.lastname}",
                 'supplier_license': supply.supplier.license_number,
                 'supply_name': supply.name
-            } for supply in item.supplies.all()]  # Use .all() here
+            } for supply in item.supplies.all()]
             
             formatted_items.append({
                 'id': item.id,
@@ -302,16 +359,17 @@ def item_management(request):
                 'measurement': item.measurement or "-",
                 'quantity': item.quantity,
                 'cost': float(item.cost),
-                'supplies': supplies_data  # This is now a list, not a RelatedManager
+                'supplies': supplies_data
             })
         
         suppliers = Supplier.objects.filter(stall=admin.stall)
         
         return render(request, 'TriadApp/admin/item_management.html', {
-            'items': formatted_items,  # Pass the formatted items
+            'items': formatted_items,
             'suppliers': suppliers,
             'admin': admin,
-            'stall': admin.stall
+            'stall': admin.stall,
+            'search_query': search_query
         })
         
     except AdminProfile.DoesNotExist:

@@ -15,6 +15,20 @@
             </button>
         </div>
 
+        <!-- Search Bar -->
+        <form id="searchForm" class="flex gap-2 mb-6">
+            <input type="text" 
+                   id="searchInput" 
+                   placeholder="Search suppliers..."
+                   class="flex-1 px-3 py-2 border rounded-md">
+            
+            <button type="button" 
+                    onclick="clearSearch()"
+                    class="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200">
+                Clear
+            </button>
+        </form>
+
         <!-- Suppliers List -->
         <div class="bg-white/80 rounded-lg overflow-hidden shadow">
             <table class="min-w-full">
@@ -22,6 +36,9 @@
                     <tr class="bg-gray-800 text-white">
                         <th class="px-6 py-4 text-left text-sm font-semibold">
                             Name
+                        </th>
+                        <th class="px-6 py-4 text-left text-sm font-semibold">
+                            License Number
                         </th>
                         <th class="px-6 py-4 text-left text-sm font-semibold">
                             Contact Person
@@ -42,6 +59,9 @@
                     <tr class="hover:bg-gray-50">
                         <td class="px-6 py-4 text-sm text-gray-900">
                             {{ supplier.firstname }} {{ supplier.middle_initial }}. {{ supplier.lastname }}
+                        </td>
+                        <td class="px-6 py-4 text-sm text-gray-600">
+                            {{ supplier.license_number }}
                         </td>
                         <td class="px-6 py-4 text-sm text-gray-600">
                             {{ supplier.contact_person }}
@@ -67,7 +87,7 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="5" class="px-6 py-4 text-center text-sm text-gray-500">
+                        <td colspan="6" class="px-6 py-4 text-center text-sm text-gray-500">
                             No suppliers registered yet.
                         </td>
                     </tr>
@@ -103,9 +123,12 @@
                         <label class="block text-gray-700 text-sm font-bold mb-2">Contact Person</label>
                         <input type="text" name="contact_person" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500">
                     </div>
-                    <div class="mb-4">
+                    <!-- License Number - Only shown when adding new supplier -->
+                    <div class="mb-4" id="licenseNumberField">
                         <label class="block text-gray-700 text-sm font-bold mb-2">License Number</label>
-                        <input type="text" name="license_number" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500">
+                        <input type="text" 
+                               name="license_number" 
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500">
                     </div>
                     <div class="mb-4">
                         <label class="block text-gray-700 text-sm font-bold mb-2">Contact Number</label>
@@ -151,15 +174,26 @@
     function openAddModal() {
         document.getElementById('modalTitle').textContent = 'Add New Supplier';
         document.getElementById('supplierForm').reset();
+        document.getElementById('licenseNumberField').style.display = 'block';
+        document.getElementById('supplierForm').action = '';
         document.getElementById('supplierModal').classList.remove('hidden');
     }
 
     function openEditModal(supplierId) {
         document.getElementById('modalTitle').textContent = 'Edit Supplier';
+        document.getElementById('licenseNumberField').style.display = 'block';
+        document.getElementById('supplierForm').action = `/edit_supplier/${supplierId}/`;
+        
+        // Store the original license number
+        const licenseField = document.querySelector('input[name="license_number"]');
+        
         // Fetch supplier data and populate form
         fetch(`/edit_supplier/${supplierId}/`)
             .then(response => response.json())
             .then(data => {
+                // Store original license number as a data attribute
+                licenseField.dataset.originalLicense = data.license_number;
+                
                 // Populate form fields with data
                 for (const [key, value] of Object.entries(data)) {
                     const field = document.querySelector(`[name="${key}"]`);
@@ -171,6 +205,9 @@
 
     function closeModal() {
         document.getElementById('supplierModal').classList.add('hidden');
+        // Clean up the data attribute
+        const licenseField = document.querySelector('input[name="license_number"]');
+        delete licenseField.dataset.originalLicense;
     }
 
     // Delete Confirmation
@@ -208,6 +245,14 @@
     document.getElementById('supplierForm').addEventListener('submit', function(e) {
         e.preventDefault();
         const formData = new FormData(this);
+        const licenseField = document.querySelector('input[name="license_number"]');
+        const originalLicense = licenseField.dataset.originalLicense;
+        const newLicense = licenseField.value;
+
+        // If editing and license hasn't changed, use the original license
+        if (originalLicense && newLicense === originalLicense) {
+            formData.set('license_number', originalLicense);
+        }
         
         Swal.fire({
             title: 'Save Supplier',
@@ -245,6 +290,94 @@
         }
     });
 
-    
+    let searchTimeout;
+
+    document.getElementById('searchInput').addEventListener('input', function(e) {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            performSearch(e.target.value);
+        }, 300);
+    });
+
+    function performSearch(query) {
+        fetch(`?search=${encodeURIComponent(query)}`, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                updateSuppliersList(data.suppliers);
+            }
+        })
+        .catch(error => console.error('Error:', error));
+    }
+
+    function updateSuppliersList(suppliers) {
+        const tbody = document.querySelector('tbody');
+        tbody.innerHTML = '';
+        
+        if (suppliers.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="6" class="px-6 py-4 text-center text-sm text-gray-500">
+                        No suppliers found
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+        
+        suppliers.forEach(supplier => {
+            tbody.innerHTML += `
+                <tr class="hover:bg-gray-50">
+                    <td class="px-6 py-4 text-sm text-gray-900">
+                        ${supplier.firstname} ${supplier.middle_initial || ''}${supplier.middle_initial ? '.' : ''} ${supplier.lastname}
+                    </td>
+                    <td class="px-6 py-4 text-sm text-gray-600">
+                        ${supplier.license_number}
+                    </td>
+                    <td class="px-6 py-4 text-sm text-gray-600">
+                        ${supplier.contact_person}
+                    </td>
+                    <td class="px-6 py-4 text-sm text-gray-600">
+                        <div>${supplier.contact_number}</div>
+                        <div>${supplier.email_address}</div>
+                    </td>
+                    <td class="px-6 py-4 text-sm text-gray-600">
+                        ${formatDate(supplier.contract_start_date)} - 
+                        ${formatDate(supplier.contract_end_date)}
+                    </td>
+                    <td class="px-6 py-4 text-sm">
+                        <button onclick="openEditModal('${supplier.id}')" 
+                                class="text-blue-600 hover:text-blue-700 font-medium mr-3">
+                            Edit
+                        </button>
+                        <button onclick="confirmDelete('${supplier.id}', '${supplier.firstname} ${supplier.lastname}')" 
+                                class="text-red-600 hover:text-red-700 font-medium">
+                            Delete
+                        </button>
+                    </td>
+                </tr>
+            `;
+        });
+    }
+
+    // Helper function to format dates
+    function formatDate(dateString) {
+        if (!dateString) return '';
+        const date = new Date(dateString);
+        return date.toLocaleDateString('en-US', { 
+            month: 'short', 
+            day: 'numeric', 
+            year: 'numeric' 
+        });
+    }
+
+    function clearSearch() {
+        document.getElementById('searchInput').value = '';
+        performSearch('');
+    }
 </script>
 {% endblock %}

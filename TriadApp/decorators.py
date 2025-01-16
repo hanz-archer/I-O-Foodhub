@@ -9,7 +9,7 @@ def superuser_required(view_func):
         # First check if user is authenticated
         if not request.user.is_authenticated:
             messages.error(request, 'Please log in to access this page.')
-            return redirect('superadmin_login')
+            return redirect('login')
         
         # Then check if user is superuser
         if not request.user.is_superuser:
@@ -28,7 +28,7 @@ def admin_required(view_func):
         # Check if user is logged in as admin
         if not request.session.get('is_admin'):
             messages.error(request, 'Please log in as admin to access this page.')
-            return redirect('admin_login')
+            return redirect('login')
         
         # If check passes, allow access to the view
         return view_func(request, *args, **kwargs)

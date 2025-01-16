@@ -109,7 +109,7 @@
                     icon: 'success',
                     title: logoutMessage,
                     text: 'You have been successfully logged out',
-                    timer: 1500,
+                    timer: 1000,
                     showConfirmButton: false,
                     position: 'center',
                     toast: false,
@@ -141,22 +141,20 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    // Show welcome message before redirecting
                     Swal.fire({
                         icon: 'success',
-                        title: `Welcome, ${data.name}!`,
-                        text: 'Login successful',
-                        timer: 1500,
-                        showConfirmButton: false,
-                        position: 'center',
-                        toast: false,
+                        title: `Welcome back, ${data.name}!`,
+                        text: 'You have successfully logged in',
+                        timer: 3000,
                         timerProgressBar: true,
-                        backdrop: true,
-                        customClass: {
-                            popup: 'animate__animated animate__fadeIn'
+                        showConfirmButton: false,
+                        didOpen: () => {
+                            Swal.showLoading();
+                        },
+                        willClose: () => {
+                            window.location.href = data.redirect_url;
                         }
                     });
-                    window.location.href = data.redirect_url;
                 } else {
                     if (data.locked) {
                         let timerInterval;

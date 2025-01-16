@@ -6,14 +6,47 @@
 
 <div class="flex-1 p-6 h-screen">
     <div class="w-full mx-auto h-full flex flex-col">
-        <!-- Header with Add Button -->
-        <div class="flex justify-between items-center mb-6">
-            <h2 class="text-2xl font-bold">Item Management</h2>
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-lg font-semibold text-gray-700">Item Management</h2>
+            <!-- Add New Item Button -->
             <button onclick="openAddModal()" 
-                    class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-md flex items-center gap-2">
-                <span>+</span> Add New Item
+                    class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md
+                           hover:bg-blue-700 transition-colors duration-200">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                </svg>
+                Add New Item
             </button>
         </div>
+
+        <!-- Simple Search Bar -->
+        <form method="GET" class="flex gap-2 mb-6">
+            <input type="text" 
+                   name="search" 
+                   id="searchInput" 
+                   value="{{ search_query }}"
+                   placeholder="Search items..."
+                   class="flex-1 px-3 py-2 border rounded-md">
+            
+            <button type="submit" 
+                    class="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200">
+                Search
+            </button>
+            
+            {% if search_query %}
+            <a href="{% url 'item_management' %}" 
+               class="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200">
+                Clear
+            </a>
+            {% endif %}
+        </form>
+
+        <!-- No Results Message -->
+        {% if search_query and not items %}
+        <div class="bg-white rounded-lg shadow p-8 text-center">
+            <p class="text-gray-500">No items found matching "{{ search_query }}"</p>
+        </div>
+        {% endif %}
 
         <!-- Items List -->
         <div class="bg-white/80 rounded-lg overflow-hidden shadow">
@@ -369,6 +402,14 @@
     document.getElementById('itemModal').addEventListener('click', function(e) {
         if (e.target === this) {
             closeModal();
+        }
+    });
+
+    // Focus search with keyboard shortcut
+    document.addEventListener('keydown', function(e) {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+            e.preventDefault();
+            document.getElementById('searchInput').focus();
         }
     });
 </script>
