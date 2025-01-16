@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="text-center p-8">
+    <h2 class="text-2xl font-bold mb-4">Account Unlocked Successfully!</h2>
+    <p class="mb-4">Your account has been unlocked. You can now log in.</p>
+    <script>
+        setTimeout(() => {
+            window.location.href = "{% url 'login' %}";
+        }, 3000);
+    </script>
+</div>
+{% endblock %} 

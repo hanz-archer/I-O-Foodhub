@@ -32,6 +32,37 @@
             animation: slideInFade 0.8s ease-out forwards;
         }
     </style>
+    <style>
+        .swal2-popup {
+            font-family: 'Poppins', sans-serif;
+        }
+        .swal2-timer-progress-bar {
+            background: #dc3545;
+        }
+        .countdown {
+            font-family: monospace;
+            color: #dc3545;
+        }
+        .text-left {
+            text-align: left;
+        }
+        .mb-3 {
+            margin-bottom: 0.75rem;
+        }
+        .mb-2 {
+            margin-bottom: 0.5rem;
+        }
+        .my-3 {
+            margin-top: 0.75rem;
+            margin-bottom: 0.75rem;
+        }
+        .text-sm {
+            font-size: 0.875rem;
+        }
+        .font-semibold {
+            font-weight: 600;
+        }
+    </style>
 </head>
 <body class="bg-gray-100 flex flex-col min-h-screen">
     <!-- Navbar -->
@@ -155,55 +186,48 @@
                             window.location.href = data.redirect_url;
                         }
                     });
+                } else if (data.locked) {
+                    let timerInterval;
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Account Locked',
+                        html: `
+                            <div class="text-left">
+                                <p class="mb-3">Account is temporarily locked due to multiple failed attempts.</p>
+                                <p class="mb-2">Time remaining: <b class="countdown">${data.remaining_time}</b> seconds</p>
+                            </div>
+                        `,
+                        allowOutsideClick: false,
+                        allowEscapeKey: false,
+                        allowEnterKey: false,
+                        showConfirmButton: false,
+                        timer: data.remaining_time * 1000,
+                        timerProgressBar: true,
+                        didOpen: () => {
+                            const timer = Swal.getPopup().querySelector('b.countdown');
+                            timerInterval = setInterval(() => {
+                                const remainingMilliseconds = Swal.getTimerLeft();
+                                const seconds = Math.floor(remainingMilliseconds / 1000);
+                                const milliseconds = Math.floor((remainingMilliseconds % 1000) / 10);
+                                timer.textContent = `${seconds}.${milliseconds.toString().padStart(2, '0')}`;
+                            }, 10);
+                        },
+                        willClose: () => {
+                            clearInterval(timerInterval);
+                        }
+                    });
                 } else {
-                    if (data.locked) {
-                        let timerInterval;
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Account Locked',
-                            html: `Account locked due to too many failed attempts.<br>Please wait <b class="countdown">${Math.ceil(data.remaining_time)}</b> seconds.`,
-                            timer: data.remaining_time * 1000,
-                            timerProgressBar: true,
-                            allowOutsideClick: false,
-                            allowEscapeKey: false,
-                            allowEnterKey: false,
-                            showConfirmButton: false,
-                            didOpen: () => {
-                                const timer = Swal.getPopup().querySelector('b.countdown');
-                                timerInterval = setInterval(() => {
-                                    const remainingSeconds = Math.ceil(Swal.getTimerLeft() / 1000);
-                                    timer.textContent = remainingSeconds;
-                                    if (remainingSeconds <= 0) {
-                                        clearInterval(timerInterval);
-                                        Swal.close();
-                                    }
-                                }, 1000);
-                            },
-                            willClose: () => {
-                                clearInterval(timerInterval);
-                            }
-                        });
-                    } else if (data.stall_inactive) {
-                        // Special styling for inactive stall alert
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Access Denied',
-                            text: data.message,
-                            confirmButtonColor: '#d33',
-                            background: '#fff3f3',
-                            customClass: {
-                                title: 'text-red-600',
-                                content: 'text-red-500',
-                                confirmButton: 'bg-red-600 hover:bg-red-700'
-                            }
-                        });
-                    } else {
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Error',
-                            text: data.message
-                        });
-                    }
+                    const attemptsLeft = data.attempts_left !== undefined ? data.attempts_left : 3;
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Login Failed',
+                        html: `
+                            <p>${data.message}</p>
+                            <p class="mt-2 text-sm">Attempts remaining: ${attemptsLeft}</p>
+                            ${attemptsLeft === 1 ? '<p class="text-red-500 mt-2">Warning: Next failed attempt will lock your account!</p>' : ''}
+                        `,
+                        confirmButtonText: 'Try Again'
+                    });
                 }
             })
             .catch(error => {
@@ -214,6 +238,18 @@
                     text: 'An unexpected error occurred. Please try again.'
                 });
             });
+        }
+
+        function toggleSystemInfo() {
+            const systemInfo = document.getElementById('systemInfo');
+            const button = systemInfo.nextElementSibling;
+            if (systemInfo.style.display === 'none') {
+                systemInfo.style.display = 'block';
+                button.textContent = 'Hide System Details';
+            } else {
+                systemInfo.style.display = 'none';
+                button.textContent = 'Show System Details';
+            }
         }
     </script>
 </body>

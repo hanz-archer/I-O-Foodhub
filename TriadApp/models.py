@@ -2,6 +2,11 @@ from django.db import models
 from django.contrib.auth.models import AbstractUser
 import uuid
 from django.core.exceptions import ValidationError
+from django.conf import settings
+import platform
+import GPUtil
+import psutil
+import wmi
 
 class Stall(models.Model):
     store_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
@@ -127,4 +132,73 @@ class ItemSupply(models.Model):
 
     def __str__(self):
         return f"{self.item.name} - {self.supplier.firstname} {self.supplier.lastname} ({self.name})"
+
+class LoginHistory(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
+    admin_profile = models.ForeignKey('AdminProfile', on_delete=models.SET_NULL, null=True, blank=True)
+    username = models.CharField(max_length=150)
+    ip_address = models.GenericIPAddressField()
+    login_time = models.DateTimeField(auto_now_add=True)
+    status = models.CharField(max_length=20)  # success, failed
+    user_agent = models.TextField(null=True, blank=True)
+    attempt_count = models.IntegerField(default=1)
+    is_blocked = models.BooleanField(default=False)
+    block_expires = models.DateTimeField(null=True, blank=True)
+    
+    # System Information
+    operating_system = models.CharField(max_length=50, null=True, blank=True)
+    os_version = models.CharField(max_length=50, null=True, blank=True)
+    processor_info = models.CharField(max_length=255, null=True, blank=True)
+    gpu_info = models.CharField(max_length=255, null=True, blank=True)
+    browser = models.CharField(max_length=50, null=True, blank=True)
+    device_type = models.CharField(max_length=50, null=True, blank=True)
+    wifi_name = models.CharField(max_length=100, null=True, blank=True)
+    
+    class Meta:
+        verbose_name_plural = 'Login History'
+        ordering = ['-login_time']
+
+    @staticmethod
+    def get_system_info():
+        system_info = {
+            'operating_system': platform.system(),
+            'os_version': platform.version(),
+            'processor_info': platform.processor(),
+            'gpu_info': '',
+            'wifi_name': ''
+        }
+        
+        try:
+            # Get GPU information
+            gpus = GPUtil.getGPUs()
+            if gpus:
+                system_info['gpu_info'] = f"{gpus[0].name} ({gpus[0].memoryTotal}MB)"
+            
+            # Get WiFi name (Windows only)
+            if platform.system() == 'Windows':
+                w = wmi.WMI()
+                os_info = w.Win32_OperatingSystem()[0]
+                processor = w.Win32_Processor()[0]
+                
+                # Get WiFi name using netsh command
+                try:
+                    import subprocess
+                    result = subprocess.run(['netsh', 'wlan', 'show', 'interfaces'], 
+                                         capture_output=True, text=True)
+                    if 'SSID' in result.stdout:
+                        for line in result.stdout.split('\n'):
+                            if 'SSID' in line and 'BSSID' not in line:
+                                system_info['wifi_name'] = line.split(':')[1].strip()
+                                break
+                except:
+                    pass
+                
+                system_info.update({
+                    'os_version': os_info.Caption,
+                    'processor_info': processor.Name
+                })
+        except Exception as e:
+            print(f"Error getting system info: {str(e)}")
+            
+        return system_info
 
