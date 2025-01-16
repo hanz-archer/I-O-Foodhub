@@ -219,9 +219,18 @@ def item_management(request):
         
         if request.method == 'POST':
             try:
+                item_id = request.POST['itemId']
+                
+                # Check if item_id exists in the same stall
+                if Item.objects.filter(stall=admin.stall, item_id=item_id).exists():
+                    return JsonResponse({
+                        'status': 'error',
+                        'message': f'Item ID "{item_id}" already exists in your stall!'
+                    })
+
                 # Create the item
                 item = Item.objects.create(
-                    item_id=request.POST['itemId'],
+                    item_id=item_id,
                     name=request.POST['itemName'],
                     size=request.POST.get('size'),
                     measurement=request.POST.get('measurement'),
@@ -272,11 +281,34 @@ def item_management(request):
                 })
         
         # GET request - display form and items
-        items = Item.objects.filter(stall=admin.stall).order_by('-created_at')
+        items = Item.objects.filter(stall=admin.stall).prefetch_related(
+            'supplies', 'supplies__supplier'
+        ).order_by('-created_at')
+        
+        # Format items with their supplies
+        formatted_items = []
+        for item in items:
+            supplies_data = [{
+                'supplier_name': f"{supply.supplier.firstname} {supply.supplier.lastname}",
+                'supplier_license': supply.supplier.license_number,
+                'supply_name': supply.name
+            } for supply in item.supplies.all()]  # Use .all() here
+            
+            formatted_items.append({
+                'id': item.id,
+                'item_id': item.item_id,
+                'name': item.name,
+                'size': item.size or "-",
+                'measurement': item.measurement or "-",
+                'quantity': item.quantity,
+                'cost': float(item.cost),
+                'supplies': supplies_data  # This is now a list, not a RelatedManager
+            })
+        
         suppliers = Supplier.objects.filter(stall=admin.stall)
         
         return render(request, 'TriadApp/admin/item_management.html', {
-            'items': items,
+            'items': formatted_items,  # Pass the formatted items
             'suppliers': suppliers,
             'admin': admin,
             'stall': admin.stall
@@ -297,8 +329,20 @@ def edit_item(request, item_id):
         
         if request.method == 'POST':
             try:
+                new_item_id = request.POST['itemId']
+                
+                # Check if item_id exists in the same stall, excluding current item
+                if Item.objects.filter(
+                    stall=admin.stall, 
+                    item_id=new_item_id
+                ).exclude(id=item_id).exists():
+                    return JsonResponse({
+                        'status': 'error',
+                        'message': f'Item ID "{new_item_id}" already exists in your stall!'
+                    })
+
                 # Update item details
-                item.item_id = request.POST['itemId']
+                item.item_id = new_item_id
                 item.name = request.POST['itemName']
                 item.size = request.POST.get('size')
                 item.measurement = request.POST.get('measurement')

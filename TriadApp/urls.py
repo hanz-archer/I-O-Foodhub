@@ -8,14 +8,12 @@ urlpatterns = [
     path('logout/', views.logout_view, name='logout'),
    
     
-    path('superadmin_login', views.superadmin_login, name='superadmin_login'),
-    path('admin_login', views.admin_login, name='admin_login'),
-    path('employee_login', views.employee_login, name='employee_login'),
 
     
     path('super_admin', views.super_admin, name='super_admin'),
     path('logout/', views.logout_view, name='logout'),
-
+   path('clear-session/', views.clear_session, name='clear_session'),
+   
     path('register_admin', suoer_admin.register_admin, name='register_admin'),
     path('add_stall', suoer_admin.add_stall, name='add_stall'),
     path('delete_stall/<uuid:store_id>/', suoer_admin.delete_stall, name='delete_stall'),
@@ -42,5 +40,6 @@ urlpatterns = [
     path('verify-otp/', views.verify_otp, name='verify_otp'),
     path('reset-password/', views.reset_password, name='reset_password'),
     path('send-contact/', views.send_contact, name='send_contact'),
+ 
 ]
         

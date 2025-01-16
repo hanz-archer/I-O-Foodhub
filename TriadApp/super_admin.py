@@ -15,6 +15,8 @@ from django.contrib.auth import get_user_model
 import os
 import time
 from datetime import datetime, date
+from django.contrib.auth import get_user_model
+CustomUser = get_user_model()
 
 
 @superuser_required
@@ -173,9 +175,6 @@ def delete_stall(request, store_id):
 
 
 
-from uuid import UUID
-from django.core.exceptions import ValidationError
-
 @superuser_required
 def register_admin(request):
     if request.method == "POST":
@@ -183,6 +182,7 @@ def register_admin(request):
         middle_initial = request.POST.get('middle_initial')
         lastname = request.POST.get('lastname')
         birthdate = request.POST.get('birthdate')
+        
         # Calculate age from birthdate
         birth_date = datetime.strptime(birthdate, '%Y-%m-%d').date()
         today = date.today()
@@ -193,6 +193,24 @@ def register_admin(request):
             messages.error(request, 'Admin must be at least 15 years old')
             return redirect('register_admin')
             
+        # Check for exact duplicate full names (allowing same first names)
+        if middle_initial:
+            name_exists = AdminProfile.objects.filter(
+                firstname__iexact=firstname,
+                middle_initial__iexact=middle_initial,
+                lastname__iexact=lastname
+            ).exists()
+        else:
+            name_exists = AdminProfile.objects.filter(
+                firstname__iexact=firstname,
+                middle_initial__isnull=True,
+                lastname__iexact=lastname
+            ).exists()
+            
+        if name_exists:
+            messages.error(request, 'An admin with this exact full name already exists')
+            return redirect('register_admin')
+            
         address = request.POST.get('address')
         username = request.POST.get('username')
         email = request.POST.get('email')
@@ -201,22 +219,30 @@ def register_admin(request):
         stall_id = request.POST.get('stall')
 
         try:
-            # Changed from id to store_id
-            stall = Stall.objects.get(store_id=stall_id)
+            # Check if username exists in CustomUser (superadmin/employees)
+            if CustomUser.objects.filter(username=username).exists():
+                messages.error(request, 'Username already exists in the system')
+                return redirect('register_admin')
             
-            # Check if stall already has an admin
+            # Check if username exists in AdminProfile
+            if AdminProfile.objects.filter(username=username).exists():
+                messages.error(request, 'Username already exists in admin profiles')
+                return redirect('register_admin')
+            
+            # Check if email exists in CustomUser
+            if CustomUser.objects.filter(email=email).exists():
+                messages.error(request, 'Email already exists in the system')
+                return redirect('register_admin')
+            
+            # Check if email exists in AdminProfile
+            if AdminProfile.objects.filter(email=email).exists():
+                messages.error(request, 'Email already exists in admin profiles')
+                return redirect('register_admin')
+            
+            # Check stall availability
+            stall = Stall.objects.get(store_id=stall_id)
             if AdminProfile.objects.filter(stall=stall).exists():
                 messages.error(request, f'Stall {stall.name} already has an admin assigned')
-                return redirect('register_admin')
-            
-            # Check if username exists
-            if AdminProfile.objects.filter(username=username).exists():
-                messages.error(request, 'Username already exists')
-                return redirect('register_admin')
-            
-            # Check if email exists
-            if AdminProfile.objects.filter(email=email).exists():
-                messages.error(request, 'Email already exists')
                 return redirect('register_admin')
             
             hashed_password = make_password(password)
@@ -225,7 +251,7 @@ def register_admin(request):
                 firstname=firstname,
                 middle_initial=middle_initial,
                 lastname=lastname,
-                age=age,  # Use calculated age
+                age=age,
                 birthdate=birthdate,
                 address=address,
                 username=username,
@@ -236,11 +262,15 @@ def register_admin(request):
             )
             messages.success(request, 'Admin successfully registered!')
             return redirect('register_admin')
+            
         except Stall.DoesNotExist:
             messages.error(request, 'Stall not found')
             return redirect('register_admin')
+        except Exception as e:
+            messages.error(request, f'An error occurred: {str(e)}')
+            return redirect('register_admin')
 
-    # Modify the stalls query to only get stalls without admins
+    # Get available stalls
     stalls = Stall.objects.exclude(
         store_id__in=AdminProfile.objects.values_list('stall__store_id', flat=True)
     )
@@ -260,12 +290,31 @@ def edit_admin(request):
             admin_id = request.POST.get('admin_id')
             admin = get_object_or_404(AdminProfile, id=admin_id)
             
-            # Get form data
             firstname = request.POST.get('firstname')
             middle_initial = request.POST.get('middle_initial')
             lastname = request.POST.get('lastname')
-            birthdate = request.POST.get('birthdate')
             
+            # Check for exact duplicate full names (allowing same first names)
+            if middle_initial:
+                name_exists = AdminProfile.objects.filter(
+                    firstname__iexact=firstname,
+                    middle_initial__iexact=middle_initial,
+                    lastname__iexact=lastname
+                ).exclude(id=admin_id).exists()
+            else:
+                name_exists = AdminProfile.objects.filter(
+                    firstname__iexact=firstname,
+                    middle_initial__isnull=True,
+                    lastname__iexact=lastname
+                ).exclude(id=admin_id).exists()
+            
+            if name_exists:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'An admin with this exact full name already exists'
+                })
+            
+            birthdate = request.POST.get('birthdate')
             # Calculate age from birthdate
             birth_date = datetime.strptime(birthdate, '%Y-%m-%d').date()
             today = date.today()

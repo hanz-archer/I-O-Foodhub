@@ -101,7 +101,7 @@ class Supplier(models.Model):
         return f"{self.firstname} {self.lastname} - {self.stall.name}"
 
 class Item(models.Model):
-    item_id = models.CharField(max_length=50, unique=True)
+    item_id = models.CharField(max_length=50)
     name = models.CharField(max_length=255)
     size = models.CharField(max_length=50, blank=True, null=True)
     measurement = models.CharField(max_length=50, blank=True, null=True)
@@ -111,6 +111,10 @@ class Item(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    class Meta:
+        # Add unique_together constraint
+        unique_together = ['item_id', 'stall']
+        
     def __str__(self):
         return f"{self.item_id} - {self.name}"
 

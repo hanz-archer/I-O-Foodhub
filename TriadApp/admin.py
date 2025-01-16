@@ -212,11 +212,23 @@ class SupplierAdmin(admin.ModelAdmin):
 
 @admin.register(Item)
 class ItemAdmin(admin.ModelAdmin):
-    list_display = ('item_id', 'name', 'quantity', 'cost', 'created_at')
-    search_fields = ('item_id', 'name')
+    list_display = ('item_id', 'name', 'stall_name', 'quantity', 'cost', 'created_at')
+    search_fields = ('item_id', 'name', 'stall__name')
+    list_filter = ('stall', 'created_at')
     inlines = [ItemSupplyInline]
+
+    def stall_name(self, obj):
+        return f"{obj.stall.name} ({obj.stall.store_id})"
+    stall_name.short_description = 'Stall'
+    stall_name.admin_order_field = 'stall__name'
 
 @admin.register(ItemSupply)
 class ItemSupplyAdmin(admin.ModelAdmin):
-    list_display = ('item', 'supplier', 'name')
-    list_filter = ('supplier',)
+    list_display = ('item', 'supplier', 'name', 'stall_info', 'created_at')
+    list_filter = ('supplier', 'item__stall', 'created_at')
+    search_fields = ('item__name', 'supplier__firstname', 'supplier__lastname', 'item__stall__name')
+
+    def stall_info(self, obj):
+        return f"{obj.item.stall.name} ({obj.item.stall.store_id})"
+    stall_info.short_description = 'Stall'
+    stall_info.admin_order_field = 'item__stall__name'

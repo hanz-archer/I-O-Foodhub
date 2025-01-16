@@ -26,6 +26,7 @@
                         <th class="px-6 py-4 text-left text-sm font-semibold">Measurement</th>
                         <th class="px-6 py-4 text-left text-sm font-semibold">Quantity</th>
                         <th class="px-6 py-4 text-left text-sm font-semibold">Cost</th>
+                        <th class="px-6 py-4 text-left text-sm font-semibold">Supplies</th>
                         <th class="px-6 py-4 text-left text-sm font-semibold">Actions</th>
                     </tr>
                 </thead>
@@ -34,10 +35,28 @@
                     <tr class="hover:bg-gray-50">
                         <td class="px-6 py-4 text-sm text-gray-900">{{ item.item_id }}</td>
                         <td class="px-6 py-4 text-sm text-gray-900">{{ item.name }}</td>
-                        <td class="px-6 py-4 text-sm text-gray-600">{{ item.size|default:"-" }}</td>
-                        <td class="px-6 py-4 text-sm text-gray-600">{{ item.measurement|default:"-" }}</td>
-                        <td class="px-6 py-4 text-sm text-gray-600">{{ item.quantity }}</td>
-                        <td class="px-6 py-4 text-sm text-gray-600">₱{{ item.cost }}</td>
+                        <td class="px-6 py-4 text-sm text-gray-900">{{ item.size }}</td>
+                        <td class="px-6 py-4 text-sm text-gray-900">{{ item.measurement }}</td>
+                        <td class="px-6 py-4 text-sm text-gray-900">{{ item.quantity }}</td>
+                        <td class="px-6 py-4 text-sm text-gray-900">₱{{ item.cost }}</td>
+                        <td class="px-6 py-4 text-sm text-gray-900">
+                            {% if item.supplies %}
+                                <div class="space-y-2">
+                                {% for supply in item.supplies %}
+                                    <div class="bg-gray-100 p-2 rounded-md">
+                                        <p class="font-semibold">{{ supply.supply_name }}</p>
+                                        <p class="text-xs text-gray-600">
+                                            Supplier: {{ supply.supplier_name }}
+                                            <br>
+                                            License: {{ supply.supplier_license }}
+                                        </p>
+                                    </div>
+                                {% endfor %}
+                                </div>
+                            {% else %}
+                                <span class="text-gray-400">No supplies</span>
+                            {% endif %}
+                        </td>
                         <td class="px-6 py-4 text-sm">
                             <button onclick="openEditModal('{{ item.id }}')" 
                                     class="text-blue-600 hover:text-blue-700 font-medium mr-3">

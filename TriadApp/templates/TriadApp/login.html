@@ -92,9 +92,19 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Check for logout message
+            // Check for logout message and show_once flag
             const logoutMessage = "{{ request.session.logout_message }}";
-            if (logoutMessage && logoutMessage !== "None") {
+            const showOnce = "{{ request.session.show_once }}";
+            
+            if (logoutMessage && logoutMessage !== "None" && showOnce === "True") {
+                // Clear the session variables immediately
+                fetch('/clear-session/', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    }
+                });
+                
                 Swal.fire({
                     icon: 'success',
                     title: logoutMessage,
@@ -114,27 +124,25 @@
 
         // Form submission handling
         const loginForm = document.getElementById('login-form');
-        loginForm.addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            const formData = new FormData(this);
-            const submitButton = this.querySelector('button[type="submit"]');
-            submitButton.disabled = true;
-            
-            try {
-                const response = await fetch(this.action, {
-                    method: 'POST',
-                    body: formData,
-                    headers: {
-                        'X-CSRFToken': '{{ csrf_token }}'
-                    }
-                });
+        loginForm.addEventListener('submit', handleLogin);
 
-                const data = await response.json();
-                
+        function handleLogin(event) {
+            event.preventDefault();
+            
+            const formData = new FormData(loginForm);
+            
+            fetch(loginForm.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
                 if (data.success) {
                     // Show welcome message before redirecting
-                    await Swal.fire({
+                    Swal.fire({
                         icon: 'success',
                         title: `Welcome, ${data.name}!`,
                         text: 'Login successful',
@@ -149,50 +157,66 @@
                         }
                     });
                     window.location.href = data.redirect_url;
-                } else if (data.locked) {
-                    let timerInterval;
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Account Locked',
-                        html: `Account locked due to too many failed attempts.<br>Please wait <b class="countdown">${Math.ceil(data.remaining_time)}</b> seconds.`,
-                        timer: data.remaining_time * 1000,
-                        timerProgressBar: true,
-                        allowOutsideClick: false,
-                        allowEscapeKey: false,
-                        allowEnterKey: false,
-                        showConfirmButton: false,
-                        didOpen: () => {
-                            const timer = Swal.getPopup().querySelector('b.countdown');
-                            timerInterval = setInterval(() => {
-                                const remainingSeconds = Math.ceil(Swal.getTimerLeft() / 1000);
-                                timer.textContent = remainingSeconds;
-                                if (remainingSeconds <= 0) {
-                                    clearInterval(timerInterval);
-                                    Swal.close();
-                                }
-                            }, 1000);
-                        },
-                        willClose: () => {
-                            clearInterval(timerInterval);
-                        }
-                    });
                 } else {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Error',
-                        text: data.message
-                    });
+                    if (data.locked) {
+                        let timerInterval;
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Account Locked',
+                            html: `Account locked due to too many failed attempts.<br>Please wait <b class="countdown">${Math.ceil(data.remaining_time)}</b> seconds.`,
+                            timer: data.remaining_time * 1000,
+                            timerProgressBar: true,
+                            allowOutsideClick: false,
+                            allowEscapeKey: false,
+                            allowEnterKey: false,
+                            showConfirmButton: false,
+                            didOpen: () => {
+                                const timer = Swal.getPopup().querySelector('b.countdown');
+                                timerInterval = setInterval(() => {
+                                    const remainingSeconds = Math.ceil(Swal.getTimerLeft() / 1000);
+                                    timer.textContent = remainingSeconds;
+                                    if (remainingSeconds <= 0) {
+                                        clearInterval(timerInterval);
+                                        Swal.close();
+                                    }
+                                }, 1000);
+                            },
+                            willClose: () => {
+                                clearInterval(timerInterval);
+                            }
+                        });
+                    } else if (data.stall_inactive) {
+                        // Special styling for inactive stall alert
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Access Denied',
+                            text: data.message,
+                            confirmButtonColor: '#d33',
+                            background: '#fff3f3',
+                            customClass: {
+                                title: 'text-red-600',
+                                content: 'text-red-500',
+                                confirmButton: 'bg-red-600 hover:bg-red-700'
+                            }
+                        });
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: data.message
+                        });
+                    }
                 }
-            } catch (error) {
+            })
+            .catch(error => {
+                console.error('Error:', error);
                 Swal.fire({
                     icon: 'error',
                     title: 'Error',
-                    text: 'Something went wrong. Please try again.'
+                    text: 'An unexpected error occurred. Please try again.'
                 });
-            } finally {
-                submitButton.disabled = false;
-            }
-        });
+            });
+        }
     </script>
 </body>
 </html>

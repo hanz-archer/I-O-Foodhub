@@ -25,6 +25,8 @@ from datetime import datetime, timedelta
 from django.utils import timezone
 import time
 
+from django.http import HttpResponse
+from django.views.decorators.http import require_POST
 User = get_user_model()
 
 def index(request):
@@ -42,37 +44,9 @@ def super_admin(request):
 
 
 
-def login_page(request):
-    return render(request, 'TriadApp/login.html')
 
-
-
-def logout_view(request):
-    # Get the user's name before logging out
-    if request.session.get('admin_name'):
-        name = request.session.get('admin_name')
-    elif request.user.is_authenticated:
-        name = request.user.first_name
-    else:
-        name = "User"
-    
-    # Clear all session data and logout
-    logout(request)
-    request.session.flush()
-    
-    # Store logout message in session
-    request.session['logout_message'] = f"Goodbye, {name}!"
-    
-    return redirect('login')
-
-
-
-def register_admin(request):
-    return render(request, 'TriadApp/superadmin/register_admin.html')
-
-
-
-def superadmin_login(request):
+@csrf_exempt
+def login_view(request):
     if request.method == 'POST':
         username = request.POST.get('username')
         password = request.POST.get('password')
@@ -82,7 +56,6 @@ def superadmin_login(request):
         block_key = f'login_blocked_{username}'
         block_time_key = f'login_blocked_time_{username}'
         
-        # Check if user is blocked
         if cache.get(block_key):
             current_time = time.time()
             block_start_time = cache.get(block_time_key)
@@ -96,168 +69,125 @@ def superadmin_login(request):
                     'remaining_time': remaining_time
                 })
             else:
-                # Reset if time has expired
                 cache.delete(block_key)
                 cache.delete(block_time_key)
 
         try:
-            user = authenticate(request, username=username, password=password)
-            
-            if user is not None and user.is_superuser:
-                cache.delete(attempts_key)
-                cache.delete(block_key)
-                cache.delete(block_time_key)
-                
-                login(request, user)
-                return JsonResponse({
-                    'success': True,
-                    'message': f"Welcome, {user.first_name}!",
-                    'redirect_url': reverse('super_admin')
-                })
-            else:
-                attempts = cache.get(attempts_key, 0) + 1
-                cache.set(attempts_key, attempts, 300)
+            # Try CustomUser (Superadmin/Employee) first
+            try:
+                user = CustomUser.objects.get(username=username)
+                if user.check_password(password):
+                    if user.is_superuser:
+                        login(request, user)
+                        cache.delete(attempts_key)
+                        cache.delete(block_key)
+                        cache.delete(block_time_key)
+                        return JsonResponse({
+                            'success': True,
+                            'redirect_url': reverse('super_admin'),
+                            'name': user.first_name
+                        })
+                    else:
+                        login(request, user)
+                        cache.delete(attempts_key)
+                        cache.delete(block_key)
+                        cache.delete(block_time_key)
+                        return JsonResponse({
+                            'success': True,
+                            'redirect_url': reverse('employee_dashboard'),
+                            'name': user.first_name
+                        })
+            except CustomUser.DoesNotExist:
+                pass
 
-                if attempts >= 3:
-                    cache.set(block_key, True, 300)
-                    cache.set(block_time_key, time.time(), 300)
-                    cache.delete(attempts_key)
+            # Try AdminProfile
+            try:
+                admin = AdminProfile.objects.get(username=username)
+                
+                # Check if stall is active
+                if not admin.stall.is_active:
                     return JsonResponse({
                         'success': False,
-                        'locked': True,
-                        'message': 'Too many failed attempts. Account locked for 5 minutes.',
-                        'remaining_time': 300
+                        'message': f'Access denied. {admin.stall.name} is currently inactive. Please contact the super admin.',
+                        'stall_inactive': True
                     })
                 
+                if check_password(password, admin.password):
+                    request.session['admin_id'] = admin.id
+                    request.session['admin_name'] = f"{admin.firstname} {admin.lastname}"
+                    request.session['stall_id'] = str(admin.stall.store_id)
+                    request.session['is_admin'] = True
+                    cache.delete(attempts_key)
+                    cache.delete(block_key)
+                    cache.delete(block_time_key)
+                    return JsonResponse({
+                        'success': True,
+                        'redirect_url': reverse('admin_dashboard'),
+                        'name': f"{admin.firstname} {admin.lastname}"
+                    })
+            except AdminProfile.DoesNotExist:
+                pass
+
+            # If we get here, increment failed attempts
+            attempts = cache.get(attempts_key, 0) + 1
+            cache.set(attempts_key, attempts, 300)
+
+            if attempts >= 3:
+                cache.set(block_key, True, 300)
+                cache.set(block_time_key, time.time(), 300)
+                cache.delete(attempts_key)
                 return JsonResponse({
                     'success': False,
-                    'message': f'Invalid credentials. {3 - attempts} attempts remaining.'
+                    'locked': True,
+                    'message': 'Too many failed attempts. Account locked for 5 minutes.',
+                    'remaining_time': 300
                 })
-                
+            
+            return JsonResponse({
+                'success': False,
+                'message': f'Invalid credentials. {3 - attempts} attempts remaining.'
+            })
+
         except Exception as e:
             return JsonResponse({
                 'success': False,
                 'message': str(e)
             })
-    
+
     return render(request, 'TriadApp/login.html')
 
 
 
-
-def admin_login(request):
-    if request.method == 'POST':
-        username = request.POST.get('username')
-        password = request.POST.get('password')
-        
-        # Check login attempts
-        attempts_key = f'login_attempts_{username}'
-        block_key = f'login_blocked_{username}'
-        
-        # Check if user is blocked
-        if cache.get(block_key):
-            time_remaining = cache.ttl(block_key)
-            return JsonResponse({
-                'success': False,
-                'locked': True,
-                'message': f'Account locked. Try again in {time_remaining} seconds.',
-                'remaining_time': time_remaining
-            })
-
-        try:
-            admin_profile = AdminProfile.objects.get(username=username)
-            if check_password(password, admin_profile.password):
-                # Reset attempts on successful login
-                cache.delete(attempts_key)
-                cache.delete(block_key)
-                
-                request.session['admin_id'] = admin_profile.id
-                request.session['admin_name'] = f"{admin_profile.firstname} {admin_profile.lastname}"
-                request.session['stall_id'] = str(admin_profile.stall.store_id)
-                request.session['is_admin'] = True
-                
-                return JsonResponse({
-                    'success': True,
-                    'message': f"Welcome, {admin_profile.firstname}!",
-                    'redirect_url': reverse('admin_dashboard')
-                })
-            else:
-                # Increment failed attempts
-                attempts = cache.get(attempts_key, 0) + 1
-                cache.set(attempts_key, attempts, 300)  # 5 minutes expiry
-
-                if attempts >= 3:
-                    cache.set(block_key, True, 300)  # 5 minutes block
-                    cache.delete(attempts_key)
-                    return JsonResponse({
-                        'success': False,
-                        'locked': True,
-                        'message': 'Too many failed attempts. Account locked for 5 minutes.',
-                        'remaining_time': 300
-                    })
-                
-                return JsonResponse({
-                    'success': False,
-                    'message': f'Invalid password. {3 - attempts} attempts remaining.'
-                })
-                
-        except AdminProfile.DoesNotExist:
-            return JsonResponse({
-                'success': False,
-                'message': "Admin account not found"
-            })
+def logout_view(request):
+    # Get the user's name before logging out
+    if request.session.get('admin_name'):
+        name = request.session.get('admin_name')
+    elif request.user.is_authenticated:
+        name = request.user.first_name
+    else:
+        name = "User"
     
-    return render(request, 'TriadApp/login.html')
-
-
-def employee_login(request):
-    if request.method == 'POST':
-        username = request.POST.get('username')
-        password = request.POST.get('password')
-
-        # Authenticate user
-        user = authenticate(request, username=username, password=password)
-
-        if user is not None and user.is_superuser:
-            login(request, user)  # Now this will use Django's login function
-            return redirect('superadmin')
-        else:
-            messages.error(request, 'Invalid credentials or not authorized as Superadmin.')
+    # Store logout message in a temporary variable
+    logout_message = f"Goodbye, {name}!"
     
-    return render(request, 'TriadApp/login.html')
-
-@superuser_required
-def super_admin_profile(request):
-    return render(request, 'TriadApp/superadmin/super_admin_profile.html', {
-        'user': request.user
-    })
-
-@superuser_required
-def update_super_admin_profile(request):
-    if request.method == 'POST':
-        user = request.user
-        
-        if 'profile_image' in request.FILES:
-            user.profile_image = request.FILES['profile_image']
-        
-        user.firstname = request.POST.get('firstname', user.firstname)
-        user.middle_name = request.POST.get('middle_name', user.middle_name)
-        user.lastname = request.POST.get('lastname', user.lastname)
-        user.birthdate = request.POST.get('birthdate', user.birthdate)
-        user.address = request.POST.get('address', user.address)
-        user.username = request.POST.get('username', user.username)
-        user.email = request.POST.get('email', user.email)
-        
-        if request.POST.get('password'):
-            user.set_password(request.POST['password'])
-        
-        try:
-            user.save()
-            return JsonResponse({'success': True})
-        except Exception as e:
-            return JsonResponse({'success': False, 'message': str(e)})
+    # Clear all session data and logout
+    logout(request)
+    request.session.flush()
     
-    return JsonResponse({'success': False, 'message': 'Invalid request method'})
+    # Create a new session for the logout message only
+    request.session['logout_message'] = logout_message
+    request.session['show_once'] = True  # Add a flag to show message only once
+    
+    return redirect('login')
+
+
+@require_POST
+def clear_session(request):
+    # Clear only the logout message and show_once flag
+    request.session.pop('logout_message', None)
+    request.session.pop('show_once', None)
+    return HttpResponse('Session cleared')
+
 
 def generate_otp():
     return ''.join(random.choices(string.digits, k=6))
@@ -549,104 +479,4 @@ def reset_login_attempts(ip):
     cache.delete(f'login_attempts_{ip}')
     cache.delete(f'last_attempt_{ip}')
 
-@csrf_exempt
-def login_view(request):
-    if request.method == 'POST':
-        username = request.POST.get('username')
-        password = request.POST.get('password')
-        
-        # Check login attempts
-        attempts_key = f'login_attempts_{username}'
-        block_key = f'login_blocked_{username}'
-        block_time_key = f'login_blocked_time_{username}'
-        
-        if cache.get(block_key):
-            current_time = time.time()
-            block_start_time = cache.get(block_time_key)
-            remaining_time = int(300 - (current_time - block_start_time))
-            
-            if remaining_time > 0:
-                return JsonResponse({
-                    'success': False,
-                    'locked': True,
-                    'message': 'Too many failed attempts. Account locked.',
-                    'remaining_time': remaining_time
-                })
-            else:
-                cache.delete(block_key)
-                cache.delete(block_time_key)
 
-        try:
-            # Try CustomUser (Superadmin/Employee) first
-            try:
-                user = CustomUser.objects.get(username=username)
-                if user.check_password(password):
-                    if user.is_superuser:
-                        login(request, user)
-                        cache.delete(attempts_key)
-                        cache.delete(block_key)
-                        cache.delete(block_time_key)
-                        return JsonResponse({
-                            'success': True,
-                            'redirect_url': reverse('super_admin'),
-                            'name': user.first_name
-                        })
-                    else:
-                        login(request, user)
-                        cache.delete(attempts_key)
-                        cache.delete(block_key)
-                        cache.delete(block_time_key)
-                        return JsonResponse({
-                            'success': True,
-                            'redirect_url': reverse('employee_dashboard'),
-                            'name': user.first_name
-                        })
-            except CustomUser.DoesNotExist:
-                pass
-
-            # Try AdminProfile
-            try:
-                admin = AdminProfile.objects.get(username=username)
-                if check_password(password, admin.password):
-                    request.session['admin_id'] = admin.id
-                    request.session['admin_name'] = f"{admin.firstname} {admin.lastname}"
-                    request.session['stall_id'] = str(admin.stall.store_id)
-                    request.session['is_admin'] = True
-                    cache.delete(attempts_key)
-                    cache.delete(block_key)
-                    cache.delete(block_time_key)
-                    return JsonResponse({
-                        'success': True,
-                        'redirect_url': reverse('admin_dashboard'),
-                        'name': f"{admin.firstname} {admin.lastname}"
-                    })
-            except AdminProfile.DoesNotExist:
-                pass
-
-            # If we get here, increment failed attempts
-            attempts = cache.get(attempts_key, 0) + 1
-            cache.set(attempts_key, attempts, 300)
-
-            if attempts >= 3:
-                cache.set(block_key, True, 300)
-                cache.set(block_time_key, time.time(), 300)
-                cache.delete(attempts_key)
-                return JsonResponse({
-                    'success': False,
-                    'locked': True,
-                    'message': 'Too many failed attempts. Account locked for 5 minutes.',
-                    'remaining_time': 300
-                })
-            
-            return JsonResponse({
-                'success': False,
-                'message': f'Invalid credentials. {3 - attempts} attempts remaining.'
-            })
-
-        except Exception as e:
-            return JsonResponse({
-                'success': False,
-                'message': str(e)
-            })
-
-    return render(request, 'TriadApp/login.html')
