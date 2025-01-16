@@ -100,3 +100,27 @@ class Supplier(models.Model):
     def __str__(self):
         return f"{self.firstname} {self.lastname} - {self.stall.name}"
 
+class Item(models.Model):
+    item_id = models.CharField(max_length=50, unique=True)
+    name = models.CharField(max_length=255)
+    size = models.CharField(max_length=50, blank=True, null=True)
+    measurement = models.CharField(max_length=50, blank=True, null=True)
+    quantity = models.IntegerField(default=0)
+    cost = models.DecimalField(max_digits=10, decimal_places=2)
+    stall = models.ForeignKey('Stall', on_delete=models.CASCADE, related_name='items', to_field='store_id')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.item_id} - {self.name}"
+
+class ItemSupply(models.Model):
+    item = models.ForeignKey(Item, on_delete=models.CASCADE, related_name='supplies')
+    supplier = models.ForeignKey('Supplier', on_delete=models.CASCADE)
+    name = models.CharField(max_length=255, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.item.name} - {self.supplier.firstname} {self.supplier.lastname} ({self.name})"
+

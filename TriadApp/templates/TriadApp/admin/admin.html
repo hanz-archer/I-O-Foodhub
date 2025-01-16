@@ -21,12 +21,13 @@
                         <img src="{{ stall.logo.url }}" alt="{{ stall.name }} Logo" class="w-full h-full object-cover">
                     {% else %}
                         <!-- Fallback if no logo is uploaded -->
-                        <div class="w-full h-full bg-gray-300 flex items-center justify-center">
+                        <div class="w-full h-full flex items-center justify-center">
                             <span class="text-gray-600 text-xl">{{ stall.name|slice:":1" }}</span>
                         </div>
                     {% endif %}
                 </div>
                 <!-- Admin's name -->
+                <span class="text-white-600 text-xl">{{ stall.name }}</span>
                 <div class="text-center mb-4">
                     <p class="text-lg">{{ admin.firstname }} {{ admin.middle_initial }} {{ admin.lastname }}</p>
                 </div>
@@ -40,7 +41,7 @@
                             <a href="#" class="block py-2.5 px-6 text-lg hover:bg-gray-700">Inventory</a>
                         </li>
                         <li>
-                            <a href="#" class="block py-2.5 px-6 text-lg hover:bg-gray-700">Item</a>
+                            <a href="{% url 'item_management' %}" class="block py-2.5 px-6 text-lg hover:bg-gray-700">Item</a>
                         </li>
                         <li>
                             <a href="{% url 'manage_suppliers' %}" class="block py-2.5 px-6 text-lg hover:bg-gray-700">Suppliers</a>
