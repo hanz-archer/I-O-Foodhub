@@ -48,9 +48,22 @@ def login_page(request):
 
 
 def logout_view(request):
+    # Get the user's name before logging out
+    if request.session.get('admin_name'):
+        name = request.session.get('admin_name')
+    elif request.user.is_authenticated:
+        name = request.user.first_name
+    else:
+        name = "User"
+    
+    # Clear all session data and logout
     logout(request)
-    messages.success(request, 'You have been successfully logged out.')
-    return redirect('login')  # Replace 'login' with your login URL name
+    request.session.flush()
+    
+    # Store logout message in session
+    request.session['logout_message'] = f"Goodbye, {name}!"
+    
+    return redirect('login')
 
 
 
@@ -575,7 +588,8 @@ def login_view(request):
                         cache.delete(block_time_key)
                         return JsonResponse({
                             'success': True,
-                            'redirect_url': reverse('super_admin')
+                            'redirect_url': reverse('super_admin'),
+                            'name': user.first_name
                         })
                     else:
                         login(request, user)
@@ -584,7 +598,8 @@ def login_view(request):
                         cache.delete(block_time_key)
                         return JsonResponse({
                             'success': True,
-                            'redirect_url': reverse('employee_dashboard')
+                            'redirect_url': reverse('employee_dashboard'),
+                            'name': user.first_name
                         })
             except CustomUser.DoesNotExist:
                 pass
@@ -602,7 +617,8 @@ def login_view(request):
                     cache.delete(block_time_key)
                     return JsonResponse({
                         'success': True,
-                        'redirect_url': reverse('admin_dashboard')
+                        'redirect_url': reverse('admin_dashboard'),
+                        'name': f"{admin.firstname} {admin.lastname}"
                     })
             except AdminProfile.DoesNotExist:
                 pass

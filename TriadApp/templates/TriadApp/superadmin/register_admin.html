@@ -61,14 +61,15 @@
 
                 <div>
                     <label for="age" class="block text-sm font-medium text-gray-700 mb-2">Age</label>
-                    <input type="number" id="age" name="age" required
-                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <input type="number" id="age" name="age" readonly required
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 cursor-not-allowed">
                 </div>
 
                 <div>
                     <label for="birthdate" class="block text-sm font-medium text-gray-700 mb-2">Birthdate</label>
                     <input type="date" id="birthdate" name="birthdate" required
                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <p id="age-error" class="text-sm text-red-600 mt-1 hidden">Age must be at least 15 years old</p>
                 </div>
 
                 <div>
@@ -234,13 +235,14 @@
                     <div class="grid grid-cols-2 gap-4">
                         <div>
                             <label for="edit_age" class="block text-sm font-medium text-gray-700">Age</label>
-                            <input type="number" id="edit_age" name="age" value="${data.age}" required
-                                   class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+                            <input type="number" id="edit_age" name="age" value="${data.age}" readonly required
+                                   class="mt-1 block w-full rounded-md border-gray-300 shadow-sm bg-gray-100 cursor-not-allowed">
                         </div>
                         <div>
                             <label for="edit_birthdate" class="block text-sm font-medium text-gray-700">Birthdate</label>
                             <input type="date" id="edit_birthdate" name="birthdate" value="${data.birthdate}" required
                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+                            <p id="edit-age-error" class="text-sm text-red-600 mt-1 hidden">Age must be at least 15 years old</p>
                         </div>
                     </div>
 
@@ -307,6 +309,41 @@
             cancelButtonText: 'Cancel',
             didOpen: () => {
                 document.getElementById('edit_stall').value = data.stall_id;
+                
+                // Add birthdate change listener
+                const birthdateInput = document.getElementById('edit_birthdate');
+                const ageInput = document.getElementById('edit_age');
+                const ageError = document.getElementById('edit-age-error');
+                const confirmButton = Swal.getConfirmButton();
+                
+                // Set max date to 15 years ago
+                const today = new Date();
+                const maxDate = new Date(today.getFullYear() - 15, today.getMonth(), today.getDate());
+                birthdateInput.max = maxDate.toISOString().split('T')[0];
+                
+                birthdateInput.addEventListener('change', function() {
+                    const birthdate = new Date(this.value);
+                    const today = new Date();
+                    
+                    let age = today.getFullYear() - birthdate.getFullYear();
+                    const monthDiff = today.getMonth() - birthdate.getMonth();
+                    
+                    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthdate.getDate())) {
+                        age--;
+                    }
+                    
+                    ageInput.value = age;
+                    
+                    if (age < 15) {
+                        confirmButton.disabled = true;
+                        confirmButton.classList.add('opacity-50', 'cursor-not-allowed');
+                        ageError.classList.remove('hidden');
+                    } else {
+                        confirmButton.disabled = false;
+                        confirmButton.classList.remove('opacity-50', 'cursor-not-allowed');
+                        ageError.classList.add('hidden');
+                    }
+                });
             },
             preConfirm: () => {
                 const formData = new FormData(document.getElementById('editAdminForm'));
@@ -420,6 +457,44 @@
     function clearForm() {
         document.getElementById('adminForm').reset();
     }
-    </script>
+
+    document.getElementById('birthdate').addEventListener('change', function() {
+        const birthdate = new Date(this.value);
+        const today = new Date();
+        
+        let age = today.getFullYear() - birthdate.getFullYear();
+        const monthDiff = today.getMonth() - birthdate.getMonth();
+        
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthdate.getDate())) {
+            age--;
+        }
+        
+        document.getElementById('age').value = age;
+        
+        // Show error and disable submit button if age < 15
+        const submitButton = document.querySelector('button[type="submit"]');
+        const ageError = document.getElementById('age-error');
+        
+        if (age < 15) {
+            submitButton.disabled = true;
+            submitButton.classList.add('bg-gray-400', 'cursor-not-allowed');
+            submitButton.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+            ageError.classList.remove('hidden');
+        } else {
+            submitButton.disabled = false;
+            submitButton.classList.remove('bg-gray-400', 'cursor-not-allowed');
+            submitButton.classList.add('bg-blue-600', 'hover:bg-blue-700');
+            ageError.classList.add('hidden');
+        }
+    });
+
+    // Set max date to 15 years ago
+    window.addEventListener('load', function() {
+        const today = new Date();
+        const maxDate = new Date(today.getFullYear() - 15, today.getMonth(), today.getDate());
+        const formattedMaxDate = maxDate.toISOString().split('T')[0];
+        document.getElementById('birthdate').max = formattedMaxDate;
+    });
+</script>
 
 {% endblock %}

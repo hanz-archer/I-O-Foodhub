@@ -91,6 +91,27 @@
     </main>
 
     <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check for logout message
+            const logoutMessage = "{{ request.session.logout_message }}";
+            if (logoutMessage && logoutMessage !== "None") {
+                Swal.fire({
+                    icon: 'success',
+                    title: logoutMessage,
+                    text: 'You have been successfully logged out',
+                    timer: 1500,
+                    showConfirmButton: false,
+                    position: 'center',
+                    toast: false,
+                    timerProgressBar: true,
+                    backdrop: true,
+                    customClass: {
+                        popup: 'animate__animated animate__fadeIn'
+                    }
+                });
+            }
+        });
+
         // Form submission handling
         const loginForm = document.getElementById('login-form');
         loginForm.addEventListener('submit', async function(e) {
@@ -112,6 +133,21 @@
                 const data = await response.json();
                 
                 if (data.success) {
+                    // Show welcome message before redirecting
+                    await Swal.fire({
+                        icon: 'success',
+                        title: `Welcome, ${data.name}!`,
+                        text: 'Login successful',
+                        timer: 1500,
+                        showConfirmButton: false,
+                        position: 'center',
+                        toast: false,
+                        timerProgressBar: true,
+                        backdrop: true,
+                        customClass: {
+                            popup: 'animate__animated animate__fadeIn'
+                        }
+                    });
                     window.location.href = data.redirect_url;
                 } else if (data.locked) {
                     let timerInterval;
