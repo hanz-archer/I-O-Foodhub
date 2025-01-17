@@ -1,13 +1,10 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
-from .models import CustomUser, Stall, AdminProfile, Supplier, Item, ItemSupply, LoginHistory
+from .models import CustomUser, Stall, AdminProfile, Supplier, Supply, LoginHistory, Category, Item, ItemProduct, ItemAddOn
 from django.utils.html import format_html
 from django.contrib.auth.hashers import make_password
 from django import forms
 
-class ItemSupplyInline(admin.TabularInline):
-    model = ItemSupply
-    extra = 1  # Number of empty forms to display
 
 @admin.register(CustomUser)
 class CustomUserAdmin(UserAdmin):
@@ -211,28 +208,77 @@ class SupplierAdmin(admin.ModelAdmin):
 
 
 
-@admin.register(Item)
-class ItemAdmin(admin.ModelAdmin):
-    list_display = ('item_id', 'name', 'stall_name', 'quantity', 'cost', 'created_at')
-    search_fields = ('item_id', 'name', 'stall__name')
-    list_filter = ('stall', 'created_at')
-    inlines = [ItemSupplyInline]
+@admin.register(Supply)
+class SupplyAdmin(admin.ModelAdmin):
+    list_display = (
+        'supply_id',
+        'name',
+        'description',
+        'category',
+        'quantity',
+        'cost',
+        'date_added',
+        'stall_info',
+        'supplier_info',
+        'supplier_name',
+        'created_at',
+        'updated_at'
+    )
+    
+    list_filter = (
+        'category',
+        'stall',
+        'supplier',
+        'date_added',
+        'created_at'
+    )
+    
+    search_fields = (
+        'supply_id',
+        'name',
+        'description',
+        'supplier_name',
+        'stall__name',
+        'supplier__firstname',
+        'supplier__lastname'
+    )
+    
+    ordering = ('-created_at',)
 
-    def stall_name(self, obj):
-        return f"{obj.stall.name} ({obj.stall.store_id})"
-    stall_name.short_description = 'Stall'
-    stall_name.admin_order_field = 'stall__name'
-
-@admin.register(ItemSupply)
-class ItemSupplyAdmin(admin.ModelAdmin):
-    list_display = ('item', 'supplier', 'name', 'stall_info', 'created_at')
-    list_filter = ('supplier', 'item__stall', 'created_at')
-    search_fields = ('item__name', 'supplier__firstname', 'supplier__lastname', 'item__stall__name')
+    fieldsets = (
+        ('Basic Information', {
+            'fields': (
+                'supply_id',
+                'name',
+                'description',
+                'category'
+            )
+        }),
+        ('Supply Details', {
+            'fields': (
+                'quantity',
+                'cost',
+                'date_added'
+            )
+        }),
+        ('Relationships', {
+            'fields': (
+                'stall',
+                'supplier',
+                'supplier_name'
+            )
+        })
+    )
 
     def stall_info(self, obj):
-        return f"{obj.item.stall.name} ({obj.item.stall.store_id})"
+        return f"{obj.stall.name} ({obj.stall.store_id})"
     stall_info.short_description = 'Stall'
-    stall_info.admin_order_field = 'item__stall__name'
+    stall_info.admin_order_field = 'stall__name'
+
+    def supplier_info(self, obj):
+        return f"{obj.supplier.firstname} {obj.supplier.lastname}"
+    supplier_info.short_description = 'Supplier'
+    supplier_info.admin_order_field = 'supplier__firstname'
 
 @admin.register(LoginHistory)
 class LoginHistoryAdmin(admin.ModelAdmin):
@@ -281,3 +327,33 @@ class LoginHistoryAdmin(admin.ModelAdmin):
         css = {
             'all': ('admin/css/system_info.css',)
         }
+
+@admin.register(Category)
+class CategoryAdmin(admin.ModelAdmin):
+    list_display = ('name', 'stall', 'created_at', 'updated_at')
+    list_filter = ('stall',)
+    search_fields = ('name', 'stall__name')
+    ordering = ('name',)
+    readonly_fields = ('created_at', 'updated_at')
+
+@admin.register(Item)
+class ItemAdmin(admin.ModelAdmin):
+    list_display = ('item_id', 'name', 'stall', 'category', 'price', 'quantity', 'is_available')
+    list_filter = ('stall', 'category', 'is_available')
+    search_fields = ('item_id', 'name', 'stall__name')
+    readonly_fields = ('item_id', 'created_at', 'updated_at')
+    ordering = ('stall', 'name')
+
+@admin.register(ItemProduct)
+class ItemProductAdmin(admin.ModelAdmin):
+    list_display = ('item', 'supply', 'quantity_per_item')
+    list_filter = ('item__stall', 'supply__category')
+    search_fields = ('item__name', 'supply__name')
+    raw_id_fields = ('item', 'supply')
+
+@admin.register(ItemAddOn)
+class ItemAddOnAdmin(admin.ModelAdmin):
+    list_display = ('item', 'supply', 'quantity_per_item')
+    list_filter = ('item__stall', 'supply__category')
+    search_fields = ('item__name', 'supply__name')
+    raw_id_fields = ('item', 'supply')

@@ -6,7 +6,7 @@ from django.contrib import messages
 from django.contrib.auth.hashers import check_password
 from .models import AdminProfile, CustomUser, LoginHistory
 from django.contrib.auth import authenticate, login
-from .decorators import superuser_required
+from .decorators import *
 from django.contrib.auth import logout
 from django.shortcuts import redirect
 from django.contrib import messages
@@ -43,6 +43,26 @@ def super_admin(request):
 
 
 
+
+@admin_required
+def admin_dashboard(request):
+    admin_id = request.session.get('admin_id')
+    is_admin = request.session.get('is_admin', False)
+    
+    if not admin_id or not is_admin:
+        request.session.flush()
+        return redirect('login')
+    
+    try:
+        admin = AdminProfile.objects.get(id=admin_id)
+        context = {
+            'admin': admin,
+            'stall': admin.stall,
+        }
+        return render(request, 'TriadApp/admin/admin.html', context)
+    except AdminProfile.DoesNotExist:
+        request.session.flush()
+        return redirect('login')
 
 
 @csrf_exempt
@@ -115,17 +135,21 @@ def login_view(request):
             try:
                 admin = AdminProfile.objects.get(username=username)
                 if check_password(password, admin.password):
+                    # Set both session variables
+                    request.session['admin_id'] = admin.id
+                    request.session['is_admin'] = True
+                    request.session.save()  # Ensure session is saved
+                    
                     # Log successful login
                     login_history.admin_profile = admin
                     login_history.status = 'success'
                     login_history.save()
                     
-                    # Clear attempt counters on success
+                    # Clear attempt counters
                     cache.delete(attempts_key)
                     cache.delete(block_key)
                     cache.delete(block_time_key)
                     
-                    request.session['admin_id'] = admin.id
                     return JsonResponse({
                         'success': True,
                         'redirect_url': reverse('admin_dashboard'),

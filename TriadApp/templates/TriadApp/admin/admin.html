@@ -9,69 +9,94 @@
 </head>
 
 <body class="bg-gray-100">
-
-    <!-- Sidebar -->
     <div class="flex">
         <!-- Sidebar Section -->
-        <div class="w-64 h-screen bg-gray-800 text-white">
-            <div class="flex flex-col items-center py-4">
-                <!-- Add stall logo -->
-                <div class="w-24 h-24 rounded-full overflow-hidden mb-4 bg-white">
-                    {% if stall.logo %}
-                        <img src="{{ stall.logo.url }}" alt="{{ stall.name }} Logo" class="w-full h-full object-cover">
-                    {% else %}
-                        <!-- Fallback if no logo is uploaded -->
-                        <div class="w-full h-full flex items-center justify-center">
-                            <span class="text-gray-600 text-xl">{{ stall.name|slice:":1" }}</span>
-                        </div>
-                    {% endif %}
+        <div class="w-64 h-screen bg-gray-800 text-white flex flex-col">
+            <!-- Profile Section -->
+            <div class="p-6 border-b border-gray-700">
+                <!-- Stall Logo -->
+                <div class="flex justify-center mb-4">
+                    <div class="w-24 h-24 rounded-full overflow-hidden bg-white ring-4 ring-gray-700">
+                        {% if stall.logo %}
+                            <img src="{{ stall.logo.url }}" alt="{{ stall.name }} Logo" class="w-full h-full object-cover">
+                        {% else %}
+                            <div class="w-full h-full flex items-center justify-center bg-gray-200">
+                                <span class="text-gray-600 text-3xl font-bold">{{ stall.name|slice:":1" }}</span>
+                            </div>
+                        {% endif %}
+                    </div>
                 </div>
-                <!-- Admin's name -->
-                <span class="text-white-600 text-xl">{{ stall.name }}</span>
+                
+                <!-- Stall Name -->
                 <div class="text-center mb-4">
-                    <p class="text-lg">{{ admin.firstname }} {{ admin.middle_initial }} {{ admin.lastname }}</p>
+                    <h1 class="text-xl font-bold text-white">{{ stall.name }}</h1>
+                    <div class="w-16 h-1 bg-blue-500 mx-auto mt-2 rounded-full"></div>
                 </div>
-                <h1 class="text-2xl font-bold">Admin Panel</h1>
-                <nav class="mt-6">
-                    <ul>
-                        <li>
-                            <a href="{% url 'admin_dashboard' %}" class="block py-2.5 px-6 text-lg hover:bg-gray-700">Dashboard</a>
-                        </li>
-                        <li>
-                            <a href="#" class="block py-2.5 px-6 text-lg hover:bg-gray-700">Inventory</a>
-                        </li>
-                        <li>
-                            <a href="{% url 'item_management' %}" class="block py-2.5 px-6 text-lg hover:bg-gray-700">Item</a>
-                        </li>
-                        <li>
-                            <a href="{% url 'manage_suppliers' %}" class="block py-2.5 px-6 text-lg hover:bg-gray-700">Suppliers</a>
-                        </li>
-                        <li>
-                            <a href="{% url 'logout' %}" 
-                               class="block py-2.5 px-6 text-lg text-red-400 hover:bg-gray-700 hover:text-red-300">
-                                <div class="flex items-center">
-                                    <span>Logout</span>
-                                </div>
-                            </a>
-                        </li>
-                    </ul>
-                </nav>
+
+                <!-- Admin Info -->
+                <div class="text-center">
+                    <p class="text-gray-400 text-sm mb-1">Store Administrator</p>
+                    <p class="text-white font-medium">
+                        {{ admin.firstname }} 
+                        {% if admin.middle_initial %}
+                            {{ admin.middle_initial }}.
+                        {% endif %} 
+                        {{ admin.lastname }}
+                    </p>
+                </div>
+            </div>
+
+            <!-- Navigation Menu -->
+            <nav class="flex-1 py-6">
+                <ul class="space-y-2">
+                    <li>
+                        <a href="{% url 'admin_dashboard' %}" 
+                           class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200">
+                            <span class="ml-2">Dashboard</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url 'manage_inventory' %}" 
+                           class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200">
+                            <span class="ml-2">Inventory Management</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url 'manage_suppliers' %}" 
+                           class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200">
+                            <span class="ml-2">Supplier Management</span>
+                        </a>
+                    </li>
+                    <li></li>
+                        <a href="{% url 'manage_categories' %}" 
+                           class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200">
+                            <span class="ml-2">Category Management</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url 'manage_supplies' %}" 
+                           class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200">
+                            <span class="ml-2">Supply Management</span>
+                        </a>
+                    </li>
+                
+                </ul>
+            </nav>
+
+            <!-- Logout Button -->
+            <div class="p-6 border-t border-gray-700">
+                <a href="{% url 'logout' %}" 
+                   class="flex items-center justify-center px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors duration-200">
+                    <span>Logout</span>
+                </a>
             </div>
         </div>
 
         <!-- Main Content -->
-        <div class="flex-1 p-6 min-h-screen">
-            <div class="flex justify-between items-center mb-6">
-               
-             
-            </div>
-
+        <div class="flex-1 min-h-screen">
             {% block content %}
-            
             {% endblock %}
         </div>
     </div>
-
 </body>
-
 </html>

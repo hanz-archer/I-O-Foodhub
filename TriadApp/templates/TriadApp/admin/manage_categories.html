@@ -1,0 +1,218 @@
+{% extends 'TriadApp/admin/admin.html' %}
+
+{% block content %}
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<div class="p-6">
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl font-bold text-gray-800">Category Management</h1>
+        <button onclick="openModal()" 
+                class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg cursor-pointer">
+            Add Category
+        </button>
+    </div>
+
+    <!-- Categories Table -->
+    <div class="bg-white shadow-md rounded-lg overflow-hidden">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200" id="categoriesTableBody">
+                {% for category in categories %}
+                <tr>
+                    <td class="px-6 py-4 whitespace-nowrap">{{ category.name }}</td>
+                    <td class="px-6 py-4 text-sm">
+                        <button onclick="openEditModal('{{ category.id }}')" 
+                                class="text-blue-600 hover:text-blue-700 font-medium mr-3 cursor-pointer">
+                            Edit
+                        </button>
+                        <button onclick="confirmDelete('{{ category.id }}', '{{ category.name|escapejs }}')" 
+                                class="text-red-600 hover:text-red-700 font-medium cursor-pointer">
+                            Delete
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Category Modal -->
+<div id="categoryModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden">
+    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+        <div class="mt-3">
+            <h3 class="text-lg font-medium leading-6 text-gray-900 mb-4" id="modalTitle">Add Category</h3>
+            <form id="categoryForm" onsubmit="handleSubmit(event)">
+                {% csrf_token %}
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2">Name*</label>
+                    <input type="text" 
+                           name="name" 
+                           id="categoryName"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500" 
+                           required>
+                </div>
+                <div class="flex justify-end space-x-3">
+                    <button type="button" 
+                            onclick="closeModal()" 
+                            class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg cursor-pointer">
+                        Cancel
+                    </button>
+                    <button type="submit" 
+                            id="submitBtn"
+                            class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg cursor-pointer">
+                        Add Category
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+let editingCategoryId = null;
+
+function openModal() {
+    const modal = document.getElementById('categoryModal');
+    const form = document.getElementById('categoryForm');
+    const modalTitle = document.getElementById('modalTitle');
+    const submitBtn = document.getElementById('submitBtn');
+    
+    editingCategoryId = null;
+    form.reset();
+    modalTitle.textContent = 'Add Category';
+    submitBtn.textContent = 'Add Category';
+    modal.classList.remove('hidden');
+}
+
+function closeModal() {
+    const modal = document.getElementById('categoryModal');
+    modal.classList.add('hidden');
+    editingCategoryId = null;
+}
+
+function editCategory(id, name, description) {
+    const modal = document.getElementById('categoryModal');
+    const form = document.getElementById('categoryForm');
+    const modalTitle = document.getElementById('modalTitle');
+    const submitBtn = document.getElementById('submitBtn');
+    
+    editingCategoryId = id;
+    document.getElementById('categoryName').value = name;
+    document.getElementById('categoryDescription').value = description;
+    
+    modalTitle.textContent = 'Edit Category';
+    submitBtn.textContent = 'Update Category';
+    modal.classList.remove('hidden');
+}
+
+function confirmDelete(categoryId, categoryName) {
+    Swal.fire({
+        title: 'Are you sure?',
+        text: `Do you want to delete ${categoryName}?`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Yes, delete it!'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            fetch(`/stall-admin/categories/delete/${categoryId}/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Deleted!',
+                        text: data.message,
+                        showConfirmButton: false,
+                        timer: 1500
+                    }).then(() => {
+                        window.location.reload();
+                    });
+                } else {
+                    throw new Error(data.message);
+                }
+            })
+            .catch(error => {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error!',
+                    text: error.message
+                });
+            });
+        }
+    });
+}
+
+function handleSubmit(event) {
+    event.preventDefault();
+    const form = event.target;
+    const formData = new FormData(form);
+    
+    const url = editingCategoryId 
+        ? `/stall-admin/categories/edit/${editingCategoryId}/`
+        : '/stall-admin/categories/add/';
+    
+    fetch(url, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            closeModal();
+            Swal.fire({
+                icon: 'success',
+                title: 'Success!',
+                text: data.message,
+                showConfirmButton: false,
+                timer: 1500
+            }).then(() => {
+                window.location.reload();
+            });
+        } else {
+            throw new Error(data.message);
+        }
+    })
+    .catch(error => {
+        Swal.fire({
+            icon: 'error',
+            title: 'Error!',
+            text: error.message
+        });
+    });
+}
+
+function openEditModal(categoryId) {
+    const modal = document.getElementById('categoryModal');
+    const form = document.getElementById('categoryForm');
+    const modalTitle = document.getElementById('modalTitle');
+    const submitBtn = document.getElementById('submitBtn');
+    
+    editingCategoryId = categoryId;
+    
+    // Get the category name from the table row
+    const categoryRow = document.querySelector(`button[onclick="openEditModal('${categoryId}')"]`).closest('tr');
+    const categoryName = categoryRow.querySelector('td').textContent;
+    
+    document.getElementById('categoryName').value = categoryName;
+    modalTitle.textContent = 'Edit Category';
+    submitBtn.textContent = 'Update Category';
+    modal.classList.remove('hidden');
+}
+</script>
+{% endblock %}

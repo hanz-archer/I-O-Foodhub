@@ -176,15 +176,14 @@
                         icon: 'success',
                         title: `Welcome back, ${data.name}!`,
                         text: 'You have successfully logged in',
-                        timer: 3000,
+                        timer: 1500,
                         timerProgressBar: true,
                         showConfirmButton: false,
                         didOpen: () => {
                             Swal.showLoading();
-                        },
-                        willClose: () => {
-                            window.location.href = data.redirect_url;
                         }
+                    }).then(() => {
+                        window.location.href = data.redirect_url;
                     });
                 } else if (data.locked) {
                     let timerInterval;

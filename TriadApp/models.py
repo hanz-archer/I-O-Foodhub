@@ -7,6 +7,9 @@ import platform
 import GPUtil
 import psutil
 import wmi
+import random
+import string
+from django.utils import timezone
 
 class Stall(models.Model):
     store_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
@@ -105,33 +108,158 @@ class Supplier(models.Model):
     def __str__(self):
         return f"{self.firstname} {self.lastname} - {self.stall.name}"
 
-class Item(models.Model):
-    item_id = models.CharField(max_length=50)
+class Supply(models.Model):
+    CATEGORY_CHOICES = [
+        ('product', 'Product'),
+        ('add_on', 'Add On'),
+    ]
+    
+    supply_id = models.CharField(max_length=50)
     name = models.CharField(max_length=255)
-    size = models.CharField(max_length=50, blank=True, null=True)
-    measurement = models.CharField(max_length=50, blank=True, null=True)
-    quantity = models.IntegerField(default=0)
+    description = models.CharField(max_length=50, blank=True, null=True)
+    category = models.CharField(
+        max_length=10,
+        choices=CATEGORY_CHOICES,
+        default='product'
+    )
+    quantity = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     cost = models.DecimalField(max_digits=10, decimal_places=2)
-    stall = models.ForeignKey('Stall', on_delete=models.CASCADE, related_name='items', to_field='store_id')
+    date_added = models.DateField()  # New field for date added
+    stall = models.ForeignKey('Stall', on_delete=models.CASCADE, related_name='supplies', to_field='store_id')
+    supplier = models.ForeignKey('Supplier', on_delete=models.CASCADE, related_name='supplies')
+    supplier_name = models.CharField(max_length=255, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        # Add unique_together constraint
-        unique_together = ['item_id', 'stall']
+        unique_together = ['supply_id', 'stall']
         
     def __str__(self):
-        return f"{self.item_id} - {self.name}"
+        supplier_info = f" ({self.supplier_name})" if self.supplier_name else ""
+        return f"{self.supply_id} - {self.name}{supplier_info}"
 
-class ItemSupply(models.Model):
-    item = models.ForeignKey(Item, on_delete=models.CASCADE, related_name='supplies')
-    supplier = models.ForeignKey('Supplier', on_delete=models.CASCADE)
-    name = models.CharField(max_length=255, null=True)
+
+
+
+class Item(models.Model):
+    item_id = models.CharField(max_length=50, unique=True, editable=False)
+    stall = models.ForeignKey('Stall', on_delete=models.CASCADE, related_name='items')
+    name = models.CharField(max_length=255)
+    picture = models.ImageField(upload_to='item_images/')
+    category = models.ForeignKey('Category', on_delete=models.PROTECT, related_name='items')
+    size = models.CharField(max_length=50, blank=True, null=True)
+    measurement = models.CharField(max_length=50, blank=True, null=True)
+    price = models.DecimalField(max_digits=10, decimal_places=2)
+    quantity = models.PositiveIntegerField(default=0)
+    expiration_date = models.DateTimeField(null=True, blank=True)
+    is_available = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def save(self, *args, **kwargs):
+        if not self.item_id:
+            # Generate unique item ID when creating new item
+            prefix = self.stall.name[:3].upper()
+            timestamp = timezone.now().strftime('%y%m%d%H%M')
+            random_suffix = ''.join(random.choices(string.digits, k=4))
+            self.item_id = f"{prefix}-{timestamp}-{random_suffix}"
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        size_str = f" ({self.size})" if self.size else ""
+        return f"{self.item_id} - {self.name}{size_str}"
+
+    class Meta:
+        ordering = ['name']
+        unique_together = ['stall', 'name', 'size']
+
+
+
+
+
+
+class ItemAddOn(models.Model):
+    item = models.ForeignKey(Item, on_delete=models.CASCADE)
+    supply = models.ForeignKey('Supply', on_delete=models.CASCADE)
+    quantity_per_item = models.DecimalField(
+        max_digits=10, 
+        decimal_places=2,
+        help_text="Quantity of supply used per item"
+    )
+
+    def clean(self):
+        if self.supply.category != 'add_on':
+            raise ValidationError("Selected supply must be an add-on")
+        if self.quantity_per_item > self.supply.quantity:
+            raise ValidationError("Quantity per item cannot exceed available supply quantity")
+
+    def save(self, *args, **kwargs):
+        self.clean()
+        super().save(*args, **kwargs)
+
+    class Meta:
+        unique_together = ['item', 'supply']
+
+class ItemProduct(models.Model):
+    item = models.ForeignKey(Item, on_delete=models.CASCADE)
+    supply = models.ForeignKey('Supply', on_delete=models.CASCADE)
+    quantity_per_item = models.DecimalField(
+        max_digits=10, 
+        decimal_places=2,
+        help_text="Quantity of supply used per item"
+    )
+
+    def clean(self):
+        if self.supply.category != 'product':
+            raise ValidationError("Selected supply must be a product")
+        if self.quantity_per_item > self.supply.quantity:
+            raise ValidationError("Quantity per item cannot exceed available supply quantity")
+
+    def save(self, *args, **kwargs):
+        self.clean()
+        super().save(*args, **kwargs)
+
+    class Meta:
+        unique_together = ['item', 'supply']
+
+
+
+
+
+
+class Category(models.Model):
+    stall = models.ForeignKey('Stall', on_delete=models.CASCADE, related_name='categories')
+    name = models.CharField(max_length=100)
+
+  
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"{self.item.name} - {self.supplier.firstname} {self.supplier.lastname} ({self.name})"
+        return f"{self.name} - {self.stall.name}"
+
+    class Meta:
+        verbose_name_plural = 'Categories'
+        ordering = ['name']
+        unique_together = ['stall', 'name']
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 class LoginHistory(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
@@ -201,4 +329,5 @@ class LoginHistory(models.Model):
             print(f"Error getting system info: {str(e)}")
             
         return system_info
+
 
