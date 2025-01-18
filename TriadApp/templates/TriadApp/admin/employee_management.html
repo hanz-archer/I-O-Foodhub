@@ -1,0 +1,398 @@
+{% extends 'TriadApp/admin/admin.html' %}
+
+{% block content %}
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<div class="flex-1 p-6">
+    <div class="max-w-4xl mx-auto">
+        <!-- Header with Add Button -->
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-2xl font-bold">Employee Management</h2>
+            <button onclick="openAddModal()" 
+                    class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-md flex items-center gap-2">
+                <span>+</span> Add New Employee
+            </button>
+        </div>
+
+        <!-- Employee Modal -->
+        <div id="employeeModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden overflow-y-auto h-full w-full">
+            <div class="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-md bg-white">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-bold" id="modalTitle">Add New Employee</h3>
+                    <button onclick="closeModal()" class="text-gray-600 hover:text-gray-800">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+
+                <form id="employeeForm" method="POST" class="space-y-4" onsubmit="handleSubmit(event)">
+                    {% csrf_token %}
+                    
+                    <!-- Personal Information -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-gray-700 text-sm font-bold mb-2">First Name*</label>
+                            <input type="text" name="firstname" required
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-gray-700 text-sm font-bold mb-2">Middle Initial</label>
+                            <input type="text" name="middle_initial" maxlength="1"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-gray-700 text-sm font-bold mb-2">Last Name*</label>
+                            <input type="text" name="lastname" required
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-gray-700 text-sm font-bold mb-2">Birthdate* (Must be 15 years or older)</label>
+                            <input type="date" name="birthdate" required max="{{ today }}"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-gray-700 text-sm font-bold mb-2">Contact Number*</label>
+                            <input type="tel" name="contact_number" required
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500">
+                        </div>
+                    </div>
+
+                    <!-- Additional Information -->
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-gray-700 text-sm font-bold mb-2">Address*</label>
+                            <textarea name="address" required rows="2"
+                                      class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"></textarea>
+                        </div>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-gray-700 text-sm font-bold mb-2">Email Address</label>
+                                <input type="email" name="email"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-gray-700 text-sm font-bold mb-2">Religion</label>
+                                <input type="text" name="religion"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-gray-700 text-sm font-bold mb-2">Position*</label>
+                                <input type="text" name="position" required
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Account Information -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-gray-700 text-sm font-bold mb-2">Username*</label>
+                            <input type="text" name="username" required
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-gray-700 text-sm font-bold mb-2">Password*</label>
+                            <input type="password" name="password" required
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500">
+                        </div>
+                    </div>
+
+                    <input type="hidden" name="employee_id" id="employee_id">
+                    <input type="hidden" name="is_edit" id="is_edit" value="false">
+
+                    <div class="flex justify-end space-x-4 pt-4">
+                        <button type="button" onclick="closeModal()"
+                                class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">
+                            Cancel
+                        </button>
+                        <button type="submit" id="submitBtn"
+                                class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600">
+                            Add Employee
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+      <!-- Employees Table -->
+<div class="bg-white/80 rounded-lg shadow overflow-x-auto">
+    <table class="w-full table-fixed" style="min-width: 1800px;">
+        <thead>
+            <tr class="bg-gray-800 text-white">
+                <th class="px-6 py-3 text-left text-sm font-semibold w-[180px]">Name</th>
+                <th class="px-6 py-3 text-left text-sm font-semibold w-[80px]">Age</th>
+                <th class="px-6 py-3 text-left text-sm font-semibold w-[120px]">Birthdate</th>
+                <th class="px-6 py-3 text-left text-sm font-semibold w-[120px]">Position</th>
+                <th class="px-6 py-3 text-left text-sm font-semibold w-[130px]">Contact</th>
+                <th class="px-6 py-3 text-left text-sm font-semibold w-[180px]">Email</th>
+                <th class="px-6 py-3 text-left text-sm font-semibold w-[120px]">Religion</th>
+                <th class="px-6 py-3 text-left text-sm font-semibold w-[250px]">Address</th>
+                <th class="px-6 py-3 text-left text-sm font-semibold w-[120px]">Username</th>
+                <th class="px-6 py-3 text-left text-sm font-semibold w-[120px]">Date Hired</th>
+                <th class="px-6 py-3 text-left text-sm font-semibold w-[100px]">Status</th>
+                <th class="px-6 py-3 text-left text-sm font-semibold w-[120px]">Actions</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+            {% for employee in employees %}
+            <tr class="hover:bg-gray-50">
+                <td class="px-6 py-4 whitespace-nowrap">
+                    {{ employee.firstname }} {% if employee.middle_initial %}{{ employee.middle_initial }}. {% endif %}{{ employee.lastname }}
+                </td>
+                <td class="px-6 py-4">{{ employee.age }}</td>
+                <td class="px-6 py-4">{{ employee.birthdate|date:"M d, Y" }}</td>
+                <td class="px-6 py-4">{{ employee.position }}</td>
+                <td class="px-6 py-4">{{ employee.contact_number }}</td>
+                <td class="px-6 py-4">{{ employee.email|default:"-" }}</td>
+                <td class="px-6 py-4">{{ employee.religion|default:"-" }}</td>
+                <td class="px-6 py-4">
+                    <span class="truncate block max-w-xs" title="{{ employee.address }}">
+                        {{ employee.address }}
+                    </span>
+                </td>
+                <td class="px-6 py-4">{{ employee.username }}</td>
+                <td class="px-6 py-4">{{ employee.date_hired|date:"M d, Y" }}</td>
+                <td class="px-6 py-4">
+                    <span class="px-2 py-1 text-sm rounded-full {% if employee.is_active %}bg-green-100 text-green-800{% else %}bg-red-100 text-red-800{% endif %}">
+                        {{ employee.is_active|yesno:"Active,Inactive" }}
+                    </span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <button onclick="openEditModal('{{ employee.id }}')" 
+                            class="text-blue-600 hover:text-blue-700 font-medium mr-3">
+                        Edit
+                    </button>
+                    <button onclick="confirmDelete('{{ employee.id }}', '{{ employee.firstname }} {{ employee.lastname }}')" 
+                            class="text-red-600 hover:text-red-700 font-medium">
+                        Delete
+                    </button>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="12" class="px-6 py-4 text-center text-gray-500">
+                    No employees found.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+    </div>
+</div>
+
+<script>
+function openAddModal() {
+    document.getElementById('modalTitle').textContent = 'Add New Employee';
+    document.getElementById('employeeForm').reset();
+    document.getElementById('submitBtn').textContent = 'Add Employee';
+    document.getElementById('employeeModal').classList.remove('hidden');
+}
+
+function closeModal() {
+    const form = document.getElementById('employeeForm');
+    form.reset();
+    document.getElementById('is_edit').value = 'false';
+    
+    // Remove status toggle if it exists
+    const statusToggle = form.querySelector('.flex.items-center.gap-4.mt-4');
+    if (statusToggle) {
+        statusToggle.remove();
+    }
+    
+    // Reset password field
+    const passwordField = form.querySelector('[name="password"]');
+    passwordField.required = true;
+    passwordField.placeholder = 'Enter password';
+    
+    document.getElementById('employeeModal').classList.add('hidden');
+}
+
+function handleSubmit(event) {
+    event.preventDefault();
+    const form = event.target;
+    const formData = new FormData(form);
+    const isEdit = document.getElementById('is_edit').value === 'true';
+
+    fetch(form.action, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            Swal.fire({
+                icon: 'success',
+                title: 'Success',
+                text: data.message,
+                timer: 1500,
+                showConfirmButton: false
+            }).then(() => {
+                closeModal();
+                window.location.reload();
+            });
+        } else {
+            throw new Error(data.message);
+        }
+    })
+    .catch(error => {
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: error.message
+        });
+    });
+}
+
+function openEditModal(employeeId) {
+    fetch(`/stall-admin/employees/${employeeId}/edit/`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                const employee = data.employee;
+                document.getElementById('modalTitle').textContent = 'Edit Employee';
+                document.getElementById('employeeForm').reset();
+                
+                // Fill form with employee data
+                const form = document.getElementById('employeeForm');
+                form.action = `/stall-admin/employees/${employeeId}/edit/`;
+                form.querySelector('[name="firstname"]').value = employee.firstname;
+                form.querySelector('[name="middle_initial"]').value = employee.middle_initial || '';
+                form.querySelector('[name="lastname"]').value = employee.lastname;
+                
+                // Format and set birthdate
+                const birthdateInput = form.querySelector('[name="birthdate"]');
+                const birthdate = new Date(employee.birthdate);
+                const formattedDate = birthdate.toISOString().split('T')[0]; // Format: YYYY-MM-DD
+                birthdateInput.value = formattedDate;
+                
+                form.querySelector('[name="address"]').value = employee.address;
+                form.querySelector('[name="contact_number"]').value = employee.contact_number;
+                form.querySelector('[name="email"]').value = employee.email || '';
+                form.querySelector('[name="religion"]').value = employee.religion || '';
+                form.querySelector('[name="position"]').value = employee.position;
+                form.querySelector('[name="username"]').value = employee.username;
+                
+                // Update password field
+                const passwordField = form.querySelector('[name="password"]');
+                passwordField.required = false;
+                passwordField.placeholder = 'Leave blank to keep current password';
+                
+                // Add status toggle
+                const statusToggle = document.createElement('div');
+                statusToggle.className = 'flex items-center gap-4 mt-4';
+                statusToggle.innerHTML = `
+                    <label class="text-gray-700 text-sm font-bold">Status:</label>
+                    <div class="flex gap-4">
+                        <label class="inline-flex items-center">
+                            <input type="radio" name="is_active" value="true" class="form-radio" 
+                                   ${employee.is_active ? 'checked' : ''}>
+                            <span class="ml-2">Active</span>
+                        </label>
+                        <label class="inline-flex items-center">
+                            <input type="radio" name="is_active" value="false" class="form-radio" 
+                                   ${!employee.is_active ? 'checked' : ''}>
+                            <span class="ml-2">Inactive</span>
+                        </label>
+                    </div>
+                `;
+                
+                // Add status toggle before the form buttons
+                const buttonsContainer = form.querySelector('.flex.justify-end');
+                form.insertBefore(statusToggle, buttonsContainer);
+                
+                document.getElementById('employee_id').value = employeeId;
+                document.getElementById('is_edit').value = 'true';
+                document.getElementById('submitBtn').textContent = 'Save Changes';
+                document.getElementById('employeeModal').classList.remove('hidden');
+            } else {
+                throw new Error(data.message);
+            }
+        })
+        .catch(error => {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: error.message
+            });
+        });
+}
+
+function confirmDelete(employeeId, employeeName) {
+    Swal.fire({
+        title: 'Are you sure?',
+        text: `Do you want to delete ${employeeName}?`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Yes, delete!',
+        cancelButtonText: 'Cancel'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            deleteEmployee(employeeId);
+        }
+    });
+}
+
+function deleteEmployee(employeeId) {
+    fetch(`/stall-admin/employees/${employeeId}/delete/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken'),
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            Swal.fire({
+                icon: 'success',
+                title: 'Deleted!',
+                text: data.message,
+                timer: 1500,
+                showConfirmButton: false
+            }).then(() => {
+                window.location.reload();
+            });
+        } else {
+            throw new Error(data.message);
+        }
+    })
+    .catch(error => {
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: error.message
+        });
+    });
+}
+
+// Helper function to get CSRF token
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+{% endblock %}

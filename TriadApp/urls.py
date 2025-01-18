@@ -39,17 +39,28 @@ urlpatterns = [
     path('stall-admin/categories/add/', stall_admins.add_category, name='add_category'),
     path('stall-admin/categories/edit/<int:category_id>/', stall_admins.edit_category, name='edit_category'),
     path('stall-admin/categories/delete/<int:category_id>/', stall_admins.delete_category, name='delete_category'),
+    
+    path('stall-admin/profile/', stall_admins.admin_profile, name='admin_profile'),
 
+    path('stall-admin/employees/add/', stall_admins.add_employee, name='add_employee'),
+    path('stall-admin/employees/<int:employee_id>/edit/', stall_admins.edit_employee, name='edit_employee'),
+    path('stall-admin/employees/<int:employee_id>/delete/', stall_admins.delete_employee, name='delete_employee'),
+
+
+    path('stall-admin/inventory/', stall_admins.manage_inventory, name='manage_inventory'),
+    path('stall-admin/items/add/', stall_admins.add_item, name='add_item'),
+    path('stall-admin/items/delete/<int:item_id>/', stall_admins.delete_item, name='delete_item'),
+    path('stall-admin/items/<int:item_id>/edit/', stall_admins.edit_item, name='edit_item'),
+
+    
     path('forgot-password/', views.forgot_password, name='forgot_password'),
     path('send-otp/', views.send_otp, name='send_otp'),
     path('verify-otp/', views.verify_otp, name='verify_otp'),
     path('reset-password/', views.reset_password, name='reset_password'),
     path('send-contact/', views.send_contact, name='send_contact'),
 
-    path('stall-admin/inventory/', stall_admins.manage_inventory, name='manage_inventory'),
-    path('stall-admin/items/add/', stall_admins.add_item, name='add_item'),
-    path('stall-admin/items/delete/<int:item_id>/', stall_admins.delete_item, name='delete_item'),
-    path('stall-admin/items/<int:item_id>/edit/', stall_admins.edit_item, name='edit_item'),
+  
+
 
 
  

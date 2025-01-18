@@ -15,23 +15,340 @@ from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
-from datetime import datetime
+from datetime import datetime, date
 from django.views.decorators.http import require_http_methods
 from .models import Category
-from .models import Item, ItemAddOn, ItemSupply
+from .models import Item, ItemAddOn, ItemSupply, Employee
 from decimal import Decimal, InvalidOperation
 import json
 import random
 import string
+from django.contrib import messages
+from django.core.exceptions import ValidationError
+import bcrypt
 
-
-
-
-
-
+@admin_required
+def admin_profile(request):
+    admin_id = request.session.get('admin_id')
+    if not admin_id:
+        return redirect('login')
+    
+    try:
+        admin = AdminProfile.objects.get(id=admin_id)
+    
+        if request.method == 'POST':
+            try:
+                # Get form data
+                firstname = request.POST.get('firstname')
+                middle_initial = request.POST.get('middle_initial')
+                lastname = request.POST.get('lastname')
+                age = request.POST.get('age')
+                birthdate = request.POST.get('birthdate')
+                address = request.POST.get('address')
+                email = request.POST.get('email')
+                contact_number = request.POST.get('contact_number')
+                new_password = request.POST.get('new_password')
+                confirm_password = request.POST.get('confirm_password')
+                
+                # Validate required fields
+                if not all([firstname, lastname, age, birthdate, address, contact_number]):
+                    raise ValidationError('Please fill in all required fields.')
+                
+                # Update admin profile
+                admin.firstname = firstname
+                admin.middle_initial = middle_initial
+                admin.lastname = lastname
+                admin.age = age
+                admin.birthdate = birthdate
+                admin.address = address
+                admin.email = email
+                admin.contact_number = contact_number
+                
+                # Handle password change
+                if new_password:
+                    if new_password != confirm_password:
+                        raise ValidationError('Passwords do not match.')
+                    if len(new_password) < 8:
+                        raise ValidationError('Password must be at least 8 characters long.')
+                    
+                    # Hash the new password
+                    salt = bcrypt.gensalt()
+                    hashed_password = bcrypt.hashpw(new_password.encode('utf-8'), salt)
+                    admin.password = hashed_password.decode('utf-8')
+                
+                admin.save()
+                messages.success(request, 'Profile updated successfully!')
+                
+            except ValidationError as e:
+                messages.error(request, str(e))
+            except Exception as e:
+                messages.error(request, 'An error occurred while updating your profile.')
+                print(f"Error updating profile: {str(e)}")
+        
+        return render(request, 'TriadApp/admin/admin_profile.html', {
+            'admin': admin,
+             'stall': admin.stall
+        })
+    except AdminProfile.DoesNotExist:
+        return redirect('login')
     
 
 
+
+
+
+@admin_required
+def add_employee(request):
+    admin_id = request.session.get('admin_id')
+    if not admin_id:
+        return redirect('login')
+    
+    try:
+        admin = AdminProfile.objects.get(id=admin_id)
+    
+        if request.method == 'POST':
+            try:
+                with transaction.atomic():
+                    admin = AdminProfile.objects.get(id=request.session.get('admin_id'))
+                    
+                    # Get form data
+                    data = {
+                        'firstname': request.POST.get('firstname'),
+                        'middle_initial': request.POST.get('middle_initial'),
+                        'lastname': request.POST.get('lastname'),
+                        'birthdate': request.POST.get('birthdate'),
+                        'address': request.POST.get('address'),
+                        'contact_number': request.POST.get('contact_number'),
+                        'email': request.POST.get('email'),
+                        'religion': request.POST.get('religion'),
+                        'position': request.POST.get('position'),
+                        'username': request.POST.get('username'),
+                        'password': request.POST.get('password')
+                    }
+                    
+                    # Calculate age from birthdate
+                    birthdate = date.fromisoformat(data['birthdate'])
+                    today = date.today()
+                    age = (today.year - birthdate.year - 
+                          ((today.month, today.day) < (birthdate.month, birthdate.day)))
+                    
+                    # Validate age
+                    if age < 15:
+                        return JsonResponse({
+                            'status': 'error',
+                            'message': 'Employee must be at least 15 years old.'
+                        })
+                    
+                    # Validate required fields
+                    required_fields = ['firstname', 'lastname', 'birthdate', 
+                                    'address', 'contact_number', 'position', 
+                                    'username', 'password']
+                    
+                    if not all(data[field] for field in required_fields):
+                        return JsonResponse({
+                            'status': 'error',
+                            'message': 'Please fill in all required fields.'
+                        })
+                    
+                    # Check if username already exists
+                    if Employee.objects.filter(username=data['username']).exists():
+                        return JsonResponse({
+                            'status': 'error',
+                            'message': 'Username already exists.'
+                        })
+                    
+                    # Hash password
+                    salt = bcrypt.gensalt()
+                    hashed_password = bcrypt.hashpw(data['password'].encode('utf-8'), salt)
+                    
+                    # Create employee
+                    employee = Employee.objects.create(
+                        stall=admin.stall,
+                        firstname=data['firstname'],
+                        middle_initial=data['middle_initial'],
+                        lastname=data['lastname'],
+                        age=age,  # Calculated age
+                        birthdate=birthdate,
+                        address=data['address'],
+                        contact_number=data['contact_number'],
+                        email=data['email'],
+                        religion=data['religion'],
+                        position=data['position'],
+                        username=data['username'],
+                        password=hashed_password.decode('utf-8')
+                    )
+                    
+                    return JsonResponse({
+                        'status': 'success',
+                        'message': f'Employee {employee.firstname} {employee.lastname} added successfully!'
+                    })
+                    
+            except ValueError as e:
+                return JsonResponse({
+                    'status': 'error',
+                    'message': 'Invalid date format.'
+                })
+            except Exception as e:
+                return JsonResponse({
+                    'status': 'error',
+                    'message': str(e)
+                })
+                
+        # GET request - return form template
+        employees = Employee.objects.filter(stall=admin.stall)
+        return render(request, 'TriadApp/admin/employee_management.html', {
+            'admin': admin,
+            'employees': employees,
+            'stall': admin.stall
+        })
+    
+    except AdminProfile.DoesNotExist:
+        return redirect('login')
+
+
+@admin_required
+def edit_employee(request, employee_id):
+    try:
+        admin = AdminProfile.objects.get(id=request.session.get('admin_id'))
+        employee = Employee.objects.get(id=employee_id, stall=admin.stall)
+        
+        if request.method == 'POST':
+            try:
+                with transaction.atomic():
+                    # Get form data
+                    data = {
+                        'firstname': request.POST.get('firstname'),
+                        'middle_initial': request.POST.get('middle_initial'),
+                        'lastname': request.POST.get('lastname'),
+                        'birthdate': request.POST.get('birthdate'),
+                        'address': request.POST.get('address'),
+                        'contact_number': request.POST.get('contact_number'),
+                        'email': request.POST.get('email'),
+                        'religion': request.POST.get('religion'),
+                        'position': request.POST.get('position'),
+                        'username': request.POST.get('username'),
+                        'new_password': request.POST.get('new_password'),
+                        'is_active': request.POST.get('is_active') == 'true'
+                    }
+                    
+                    # Calculate age from birthdate
+                    birthdate = date.fromisoformat(data['birthdate'])
+                    today = date.today()
+                    age = (today.year - birthdate.year - 
+                          ((today.month, today.day) < (birthdate.month, birthdate.day)))
+                    
+                    # Validate age
+                    if age < 15:
+                        return JsonResponse({
+                            'status': 'error',
+                            'message': 'Employee must be at least 15 years old.'
+                        })
+                    
+                    # Check username uniqueness if changed
+                    if data['username'] != employee.username and Employee.objects.filter(username=data['username']).exists():
+                        return JsonResponse({
+                            'status': 'error',
+                            'message': 'Username already exists.'
+                        })
+                    
+                    # Update employee data
+                    employee.firstname = data['firstname']
+                    employee.middle_initial = data['middle_initial']
+                    employee.lastname = data['lastname']
+                    employee.age = age
+                    employee.birthdate = birthdate
+                    employee.address = data['address']
+                    employee.contact_number = data['contact_number']
+                    employee.email = data['email']
+                    employee.religion = data['religion']
+                    employee.position = data['position']
+                    employee.username = data['username']
+                    employee.is_active = data['is_active']
+                    
+                    # Update password if provided
+                    if data['new_password']:
+                        salt = bcrypt.gensalt()
+                        hashed_password = bcrypt.hashpw(data['new_password'].encode('utf-8'), salt)
+                        employee.password = hashed_password.decode('utf-8')
+                    
+                    employee.save()
+                    
+                    return JsonResponse({
+                        'status': 'success',
+                        'message': f'Employee {employee.firstname} {employee.lastname} updated successfully!'
+                    })
+                    
+            except Exception as e:
+                return JsonResponse({
+                    'status': 'error',
+                    'message': str(e)
+                })
+        
+        # GET request - return employee data
+        return JsonResponse({
+            'status': 'success',
+            'employee': {
+                'id': employee.id,
+                'firstname': employee.firstname,
+                'middle_initial': employee.middle_initial,
+                'lastname': employee.lastname,
+                'birthdate': employee.birthdate.isoformat(),
+                'address': employee.address,
+                'contact_number': employee.contact_number,
+                'email': employee.email,
+                'religion': employee.religion,
+                'position': employee.position,
+                'username': employee.username,
+                'is_active': employee.is_active
+            }
+        })
+        
+    except Employee.DoesNotExist:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Employee not found.'
+        })
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        })
+
+    
+
+@admin_required
+def delete_employee(request, employee_id):
+    if request.method == 'POST':
+        try:
+            admin = AdminProfile.objects.get(id=request.session.get('admin_id'))
+            employee = Employee.objects.get(id=employee_id, stall=admin.stall)
+            
+            # Store name before deletion for success message
+            employee_name = f"{employee.firstname} {employee.lastname}"
+            
+            # Delete the employee
+            employee.delete()
+            
+            return JsonResponse({
+                'status': 'success',
+                'message': f'Employee {employee_name} has been deleted successfully.'
+            })
+            
+        except Employee.DoesNotExist:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Employee not found.'
+            })
+        except Exception as e:
+            return JsonResponse({
+                'status': 'error',
+                'message': str(e)
+            })
+            
+    return JsonResponse({
+        'status': 'error',
+        'message': 'Invalid request method.'
+    })
 
 
 
@@ -913,6 +1230,4 @@ def edit_item(request, item_id):
             'message': str(e)
         })
     
-
-
 

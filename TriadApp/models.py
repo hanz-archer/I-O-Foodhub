@@ -314,4 +314,27 @@ class LoginHistory(models.Model):
             
         return system_info
 
+class Employee(models.Model):
+    stall = models.ForeignKey('Stall', on_delete=models.CASCADE, related_name='employees')
+    firstname = models.CharField(max_length=50)
+    middle_initial = models.CharField(max_length=1, blank=True, null=True)
+    lastname = models.CharField(max_length=50)
+    age = models.IntegerField()
+    birthdate = models.DateField()
+    address = models.TextField()
+    contact_number = models.CharField(max_length=15)
+    email = models.EmailField(blank=True, null=True)
+    religion = models.CharField(max_length=50, blank=True, null=True)
+    position = models.CharField(max_length=50)  # Changed to regular CharField without choices
+    username = models.CharField(max_length=50, unique=True)
+    password = models.CharField(max_length=100)
+    date_hired = models.DateTimeField(auto_now_add=True)
+    is_active = models.BooleanField(default=True)
+
+    def __str__(self):
+        return f"{self.firstname} {self.lastname} - {self.position}"
+
+    class Meta:
+        ordering = ['lastname', 'firstname']
+
 

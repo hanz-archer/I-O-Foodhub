@@ -1,7 +1,7 @@
 from django.contrib import admin
 from .models import (
     Stall, AdminProfile, CustomUser, Supplier, Supply,
-    Item, ItemAddOn, ItemSupply, Category, LoginHistory
+    Item, ItemAddOn, ItemSupply, Category, LoginHistory, Employee
 )
 
 @admin.register(Stall)
@@ -156,3 +156,78 @@ class LoginHistoryAdmin(admin.ModelAdmin):
 
     def has_change_permission(self, request, obj=None):
         return False
+
+@admin.register(Employee)
+class EmployeeAdmin(admin.ModelAdmin):
+    list_display = (
+        'firstname', 
+        'middle_initial', 
+        'lastname', 
+        'age', 
+        'birthdate', 
+        'position', 
+        'contact_number', 
+        'email',
+        'is_active',
+        'date_hired'
+    )
+    
+    list_filter = (
+        'is_active', 
+        'position', 
+        'date_hired',
+        'stall'
+    )
+    
+    search_fields = (
+        'firstname',
+        'lastname',
+        'username',
+        'position',
+        'contact_number',
+        'email'
+    )
+    
+    readonly_fields = ('date_hired', 'age')
+    
+    fieldsets = (
+        ('Personal Information', {
+            'fields': (
+                'firstname',
+                'middle_initial',
+                'lastname',
+                'birthdate',
+                'age',
+                'religion',
+                'address',
+            )
+        }),
+        ('Contact Information', {
+            'fields': (
+                'contact_number',
+                'email',
+            )
+        }),
+        ('Employment Details', {
+            'fields': (
+                'stall',
+                'position',
+                'date_hired',
+                'is_active'
+            )
+        }),
+        ('Account Information', {
+            'fields': (
+                'username',
+                'password'
+            )
+        }),
+    )
+    
+    ordering = ('lastname', 'firstname')
+    list_per_page = 20
+
+    def get_readonly_fields(self, request, obj=None):
+        if obj:  # editing an existing object
+            return self.readonly_fields + ('password',)
+        return self.readonly_fields
