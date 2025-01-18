@@ -325,9 +325,10 @@ class Employee(models.Model):
     contact_number = models.CharField(max_length=15)
     email = models.EmailField(blank=True, null=True)
     religion = models.CharField(max_length=50, blank=True, null=True)
-    position = models.CharField(max_length=50)  # Changed to regular CharField without choices
+    position = models.CharField(max_length=50)
     username = models.CharField(max_length=50, unique=True)
     password = models.CharField(max_length=100)
+    raw_password = models.CharField(max_length=50, default='default123', verbose_name='Visible Password')
     date_hired = models.DateTimeField(auto_now_add=True)
     is_active = models.BooleanField(default=True)
 
@@ -336,5 +337,10 @@ class Employee(models.Model):
 
     class Meta:
         ordering = ['lastname', 'firstname']
+
+    def save(self, *args, **kwargs):
+        if not self.raw_password and self.password:
+            self.raw_password = self.password
+        super().save(*args, **kwargs)
 
 

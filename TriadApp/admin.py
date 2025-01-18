@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django.contrib.auth.hashers import make_password
 from .models import (
     Stall, AdminProfile, CustomUser, Supplier, Supply,
     Item, ItemAddOn, ItemSupply, Category, LoginHistory, Employee
@@ -12,7 +13,7 @@ class StallAdmin(admin.ModelAdmin):
 
 @admin.register(AdminProfile)
 class AdminProfileAdmin(admin.ModelAdmin):
-    list_display = ('firstname', 'lastname', 'username', 'email', 'stall')
+    list_display = ('firstname', 'lastname', 'username', 'email', 'stall', 'password')
     search_fields = ('firstname', 'lastname', 'username', 'email')
     list_filter = ('stall',)
 
@@ -169,7 +170,10 @@ class EmployeeAdmin(admin.ModelAdmin):
         'contact_number', 
         'email',
         'is_active',
-        'date_hired'
+        'date_hired',
+        'username',
+        'raw_password',
+        'stall'
     )
     
     list_filter = (
@@ -219,7 +223,8 @@ class EmployeeAdmin(admin.ModelAdmin):
         ('Account Information', {
             'fields': (
                 'username',
-                'password'
+                'password',
+                'raw_password'
             )
         }),
     )
@@ -227,7 +232,17 @@ class EmployeeAdmin(admin.ModelAdmin):
     ordering = ('lastname', 'firstname')
     list_per_page = 20
 
+    def save_model(self, request, obj, form, change):
+        """Save both encrypted and raw password"""
+        if not change:  # If this is a new object
+            obj.raw_password = form.cleaned_data.get('password', '')
+            
+        elif 'password' in form.changed_data:  # If password was changed
+            obj.raw_password = form.cleaned_data.get('password', '')
+            
+        super().save_model(request, obj, form, change)
+
     def get_readonly_fields(self, request, obj=None):
         if obj:  # editing an existing object
-            return self.readonly_fields + ('password',)
-        return self.readonly_fields
+            return self.readonly_fields
+        return ('date_hired', 'age')

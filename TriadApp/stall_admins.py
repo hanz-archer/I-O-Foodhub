@@ -126,6 +126,17 @@ def add_employee(request):
                         'password': request.POST.get('password')
                     }
                     
+                    # Validate required fields
+                    required_fields = ['firstname', 'lastname', 'birthdate', 
+                                    'address', 'contact_number', 'position', 
+                                    'username', 'password']
+                    
+                    if not all(data[field] for field in required_fields):
+                        return JsonResponse({
+                            'status': 'error',
+                            'message': 'Please fill in all required fields.'
+                        })
+                    
                     # Calculate age from birthdate
                     birthdate = date.fromisoformat(data['birthdate'])
                     today = date.today()
@@ -139,17 +150,6 @@ def add_employee(request):
                             'message': 'Employee must be at least 15 years old.'
                         })
                     
-                    # Validate required fields
-                    required_fields = ['firstname', 'lastname', 'birthdate', 
-                                    'address', 'contact_number', 'position', 
-                                    'username', 'password']
-                    
-                    if not all(data[field] for field in required_fields):
-                        return JsonResponse({
-                            'status': 'error',
-                            'message': 'Please fill in all required fields.'
-                        })
-                    
                     # Check if username already exists
                     if Employee.objects.filter(username=data['username']).exists():
                         return JsonResponse({
@@ -161,13 +161,17 @@ def add_employee(request):
                     salt = bcrypt.gensalt()
                     hashed_password = bcrypt.hashpw(data['password'].encode('utf-8'), salt)
                     
-                    # Create employee
-                    employee = Employee.objects.create(
+                    # Print debug information
+                    print(f"Raw Password: {data['password']}")
+                    print(f"Hashed Password: {hashed_password.decode('utf-8')}")
+                    
+                    # Create employee with both passwords
+                    employee = Employee(
                         stall=admin.stall,
                         firstname=data['firstname'],
                         middle_initial=data['middle_initial'],
                         lastname=data['lastname'],
-                        age=age,  # Calculated age
+                        age=age,
                         birthdate=birthdate,
                         address=data['address'],
                         contact_number=data['contact_number'],
@@ -175,8 +179,12 @@ def add_employee(request):
                         religion=data['religion'],
                         position=data['position'],
                         username=data['username'],
-                        password=hashed_password.decode('utf-8')
+                        password=hashed_password.decode('utf-8'),
+                        raw_password=data['password']  # Store the raw password
                     )
+                    
+                    # Save the employee
+                    employee.save()
                     
                     return JsonResponse({
                         'status': 'success',
@@ -231,7 +239,18 @@ def edit_employee(request, employee_id):
                         'is_active': request.POST.get('is_active') == 'true'
                     }
                     
-                    # Calculate age from birthdate
+                    # Validate required fields
+                    required_fields = ['firstname', 'lastname', 'birthdate', 
+                                    'address', 'contact_number', 'position', 
+                                    'username']
+                    
+                    if not all(data[field] for field in required_fields):
+                        return JsonResponse({
+                            'status': 'error',
+                            'message': 'Please fill in all required fields.'
+                        })
+                    
+                    # Calculate age
                     birthdate = date.fromisoformat(data['birthdate'])
                     today = date.today()
                     age = (today.year - birthdate.year - 
@@ -255,8 +274,8 @@ def edit_employee(request, employee_id):
                     employee.firstname = data['firstname']
                     employee.middle_initial = data['middle_initial']
                     employee.lastname = data['lastname']
-                    employee.age = age
                     employee.birthdate = birthdate
+                    employee.age = age
                     employee.address = data['address']
                     employee.contact_number = data['contact_number']
                     employee.email = data['email']
@@ -267,10 +286,21 @@ def edit_employee(request, employee_id):
                     
                     # Update password if provided
                     if data['new_password']:
+                        # Print debug information
+                        print(f"New Raw Password: {data['new_password']}")
+                        
+                        # Hash the new password
                         salt = bcrypt.gensalt()
                         hashed_password = bcrypt.hashpw(data['new_password'].encode('utf-8'), salt)
+                        
+                        # Update both passwords
                         employee.password = hashed_password.decode('utf-8')
+                        employee.raw_password = data['new_password']
+                        
+                        print(f"New Hashed Password: {employee.password}")
+                        print(f"New Raw Password Stored: {employee.raw_password}")
                     
+                    # Save the employee
                     employee.save()
                     
                     return JsonResponse({
@@ -278,6 +308,11 @@ def edit_employee(request, employee_id):
                         'message': f'Employee {employee.firstname} {employee.lastname} updated successfully!'
                     })
                     
+            except ValueError as e:
+                return JsonResponse({
+                    'status': 'error',
+                    'message': 'Invalid date format.'
+                })
             except Exception as e:
                 return JsonResponse({
                     'status': 'error',
@@ -299,7 +334,8 @@ def edit_employee(request, employee_id):
                 'religion': employee.religion,
                 'position': employee.position,
                 'username': employee.username,
-                'is_active': employee.is_active
+                'is_active': employee.is_active,
+                'raw_password': employee.raw_password
             }
         })
         
@@ -314,7 +350,6 @@ def edit_employee(request, employee_id):
             'message': str(e)
         })
 
-    
 
 @admin_required
 def delete_employee(request, employee_id):

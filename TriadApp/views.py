@@ -4,7 +4,7 @@ import pyrebase
 from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.contrib.auth.hashers import check_password
-from .models import AdminProfile, CustomUser, LoginHistory
+from .models import AdminProfile, CustomUser, LoginHistory, Employee
 from django.contrib.auth import authenticate, login
 from .decorators import *
 from django.contrib.auth import logout
@@ -65,6 +65,7 @@ def admin_dashboard(request):
         return redirect('login')
 
 
+
 @csrf_exempt
 def login_view(request):
     if request.method == 'POST':
@@ -97,7 +98,7 @@ def login_view(request):
         # Get system information
         system_info = LoginHistory.get_system_info()
         
-        # Create base login history entry with attempt count
+        # Create base login history entry
         current_attempts = cache.get(attempts_key, 0)
         login_history = LoginHistory(
             username=username,
@@ -108,24 +109,22 @@ def login_view(request):
         )
         
         try:
-            # Try CustomUser (Superadmin/Employee) first
+            # Try CustomUser (Superadmin) first
             try:
                 user = CustomUser.objects.get(username=username)
                 if user.check_password(password):
                     login(request, user)
-                    # Log successful login
                     login_history.user = user
                     login_history.status = 'success'
                     login_history.save()
                     
-                    # Clear attempt counters on success
                     cache.delete(attempts_key)
                     cache.delete(block_key)
                     cache.delete(block_time_key)
                     
                     return JsonResponse({
                         'success': True,
-                        'redirect_url': reverse('super_admin' if user.is_superuser else 'employee_dashboard'),
+                        'redirect_url': reverse('super_admin'),
                         'name': user.first_name
                     })
             except CustomUser.DoesNotExist:
@@ -135,17 +134,14 @@ def login_view(request):
             try:
                 admin = AdminProfile.objects.get(username=username)
                 if check_password(password, admin.password):
-                    # Set both session variables
                     request.session['admin_id'] = admin.id
                     request.session['is_admin'] = True
-                    request.session.save()  # Ensure session is saved
+                    request.session.save()
                     
-                    # Log successful login
                     login_history.admin_profile = admin
                     login_history.status = 'success'
                     login_history.save()
                     
-                    # Clear attempt counters
                     cache.delete(attempts_key)
                     cache.delete(block_key)
                     cache.delete(block_time_key)
@@ -156,6 +152,39 @@ def login_view(request):
                         'name': f"{admin.firstname} {admin.lastname}"
                     })
             except AdminProfile.DoesNotExist:
+                pass
+            
+            # Try Employee
+            try:
+                employee = Employee.objects.get(username=username)
+                if password == employee.raw_password:
+                    # Check if employee is active
+                    if not employee.is_active:
+                        login_history.status = 'failed'
+                        login_history.save()
+                        return JsonResponse({
+                            'success': False,
+                            'message': 'Your account has been deactivated. Please contact your administrator.'
+                        })
+                    
+                    request.session['employee_id'] = employee.id
+                    request.session['is_employee'] = True
+                    request.session.save()
+                    
+                    login_history.employee = employee
+                    login_history.status = 'success'
+                    login_history.save()
+                    
+                    cache.delete(attempts_key)
+                    cache.delete(block_key)
+                    cache.delete(block_time_key)
+                    
+                    return JsonResponse({
+                        'success': True,
+                        'redirect_url': reverse('employee_dashboard'),
+                        'name': f"{employee.firstname} {employee.lastname}"
+                    })
+            except Employee.DoesNotExist:
                 pass
             
             # If we get here, login failed
@@ -179,7 +208,6 @@ def login_view(request):
             })
             
         except Exception as e:
-            # Log error
             login_history.status = 'error'
             login_history.save()
             return JsonResponse({
@@ -511,5 +539,32 @@ def increment_login_attempts(ip):
 def reset_login_attempts(ip):
     cache.delete(f'login_attempts_{ip}')
     cache.delete(f'last_attempt_{ip}')
+
+@login_required
+def employee_dashboard(request):
+    employee_id = request.session.get('employee_id')
+    is_employee = request.session.get('is_employee', False)
+    
+    if not employee_id or not is_employee:
+        request.session.flush()
+        return redirect('login')
+    
+    try:
+        employee = Employee.objects.get(id=employee_id)
+        
+        # Check if employee is active
+        if not employee.is_active:
+            request.session.flush()
+            messages.error(request, 'Your account has been deactivated. Please contact your administrator.')
+            return redirect('login')
+        
+        context = {
+            'employee': employee,
+            'stall': employee.stall,
+        }
+        return render(request, 'TriadApp/employee/employee.html', context)
+    except Employee.DoesNotExist:
+        request.session.flush()
+        return redirect('login')
 
 

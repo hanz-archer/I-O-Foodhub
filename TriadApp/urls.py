@@ -59,6 +59,8 @@ urlpatterns = [
     path('reset-password/', views.reset_password, name='reset_password'),
     path('send-contact/', views.send_contact, name='send_contact'),
 
+    path('employee/dashboard/', views.employee_dashboard, name='employee_dashboard'),
+
   
 
 

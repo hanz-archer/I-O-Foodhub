@@ -108,13 +108,14 @@
                     <input type="hidden" name="employee_id" id="employee_id">
                     <input type="hidden" name="is_edit" id="is_edit" value="false">
 
-                    <div class="flex justify-end space-x-4 pt-4">
+                    <!-- Submit Button -->
+                    <div class="flex justify-end space-x-3 pt-4">
                         <button type="button" onclick="closeModal()"
-                                class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">
+                                class="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500">
                             Cancel
                         </button>
-                        <button type="submit" id="submitBtn"
-                                class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600">
+                        <button type="submit" id="submitButton"
+                                class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
                             Add Employee
                         </button>
                     </div>
@@ -136,6 +137,7 @@
                 <th class="px-6 py-3 text-left text-sm font-semibold w-[120px]">Religion</th>
                 <th class="px-6 py-3 text-left text-sm font-semibold w-[250px]">Address</th>
                 <th class="px-6 py-3 text-left text-sm font-semibold w-[120px]">Username</th>
+               
                 <th class="px-6 py-3 text-left text-sm font-semibold w-[120px]">Date Hired</th>
                 <th class="px-6 py-3 text-left text-sm font-semibold w-[100px]">Status</th>
                 <th class="px-6 py-3 text-left text-sm font-semibold w-[120px]">Actions</th>
@@ -159,6 +161,7 @@
                     </span>
                 </td>
                 <td class="px-6 py-4">{{ employee.username }}</td>
+             
                 <td class="px-6 py-4">{{ employee.date_hired|date:"M d, Y" }}</td>
                 <td class="px-6 py-4">
                     <span class="px-2 py-1 text-sm rounded-full {% if employee.is_active %}bg-green-100 text-green-800{% else %}bg-red-100 text-red-800{% endif %}">
@@ -191,29 +194,30 @@
 
 <script>
 function openAddModal() {
-    document.getElementById('modalTitle').textContent = 'Add New Employee';
+    document.getElementById('modalTitle').textContent = 'Add Employee';
     document.getElementById('employeeForm').reset();
-    document.getElementById('submitBtn').textContent = 'Add Employee';
+    document.getElementById('employeeForm').action = '/stall-admin/employees/add/';
+    
+    // Make password required for new employees
+    const passwordField = document.getElementById('employeeForm').querySelector('[name="password"]');
+    passwordField.required = true;
+    passwordField.placeholder = 'Enter password';
+    
+    // Set submit button text to "Add Employee"
+    document.getElementById('submitButton').textContent = 'Add Employee';
+    
+    // Remove any existing status toggle
+    const existingToggle = document.querySelector('.status-toggle');
+    if (existingToggle) {
+        existingToggle.remove();
+    }
+    
     document.getElementById('employeeModal').classList.remove('hidden');
 }
 
 function closeModal() {
-    const form = document.getElementById('employeeForm');
-    form.reset();
-    document.getElementById('is_edit').value = 'false';
-    
-    // Remove status toggle if it exists
-    const statusToggle = form.querySelector('.flex.items-center.gap-4.mt-4');
-    if (statusToggle) {
-        statusToggle.remove();
-    }
-    
-    // Reset password field
-    const passwordField = form.querySelector('[name="password"]');
-    passwordField.required = true;
-    passwordField.placeholder = 'Enter password';
-    
     document.getElementById('employeeModal').classList.add('hidden');
+    document.getElementById('employeeForm').reset();
 }
 
 function handleSubmit(event) {
@@ -261,60 +265,74 @@ function openEditModal(employeeId) {
         .then(data => {
             if (data.status === 'success') {
                 const employee = data.employee;
-                document.getElementById('modalTitle').textContent = 'Edit Employee';
+                
+                // Clear the form first
                 document.getElementById('employeeForm').reset();
                 
-                // Fill form with employee data
+                // Set the correct title and submit button text
+                document.getElementById('modalTitle').textContent = `Edit Employee: ${employee.firstname} ${employee.lastname}`;
+                document.getElementById('submitButton').textContent = 'Save Changes';  // Update button text
+                
+                // Set the correct form action
                 const form = document.getElementById('employeeForm');
                 form.action = `/stall-admin/employees/${employeeId}/edit/`;
-                form.querySelector('[name="firstname"]').value = employee.firstname;
-                form.querySelector('[name="middle_initial"]').value = employee.middle_initial || '';
-                form.querySelector('[name="lastname"]').value = employee.lastname;
                 
-                // Format and set birthdate
-                const birthdateInput = form.querySelector('[name="birthdate"]');
-                const birthdate = new Date(employee.birthdate);
-                const formattedDate = birthdate.toISOString().split('T')[0]; // Format: YYYY-MM-DD
-                birthdateInput.value = formattedDate;
+                // Fill form with employee data
+                const inputs = {
+                    'firstname': employee.firstname,
+                    'middle_initial': employee.middle_initial || '',
+                    'lastname': employee.lastname,
+                    'birthdate': employee.birthdate,
+                    'address': employee.address,
+                    'contact_number': employee.contact_number,
+                    'email': employee.email || '',
+                    'religion': employee.religion || '',
+                    'position': employee.position,
+                    'username': employee.username
+                };
                 
-                form.querySelector('[name="address"]').value = employee.address;
-                form.querySelector('[name="contact_number"]').value = employee.contact_number;
-                form.querySelector('[name="email"]').value = employee.email || '';
-                form.querySelector('[name="religion"]').value = employee.religion || '';
-                form.querySelector('[name="position"]').value = employee.position;
-                form.querySelector('[name="username"]').value = employee.username;
+                // Set values and restore cursor styles
+                Object.entries(inputs).forEach(([name, value]) => {
+                    const input = form.querySelector(`[name="${name}"]`);
+                    if (input) {
+                        input.value = value;
+                        input.classList.remove('cursor-not-allowed');
+                        input.classList.add(input.type === 'text' || input.type === 'password' ? 'cursor-text' : 'cursor-pointer');
+                    }
+                });
                 
-                // Update password field
+                // Handle password field for edit mode
                 const passwordField = form.querySelector('[name="password"]');
-                passwordField.required = false;
-                passwordField.placeholder = 'Leave blank to keep current password';
+                if (passwordField) {
+                    passwordField.name = 'new_password';
+                    passwordField.required = false;
+                    passwordField.value = '';
+                    passwordField.placeholder = 'Enter new password (leave blank to keep current)';
+                    passwordField.classList.remove('cursor-not-allowed');
+                    passwordField.classList.add('cursor-text');
+                }
                 
-                // Add status toggle
-                const statusToggle = document.createElement('div');
-                statusToggle.className = 'flex items-center gap-4 mt-4';
-                statusToggle.innerHTML = `
-                    <label class="text-gray-700 text-sm font-bold">Status:</label>
-                    <div class="flex gap-4">
-                        <label class="inline-flex items-center">
-                            <input type="radio" name="is_active" value="true" class="form-radio" 
+                // Add status toggle for edit mode
+                const accountSection = form.querySelector('.grid:last-of-type');
+                if (!form.querySelector('.status-toggle')) {
+                    const statusToggle = document.createElement('div');
+                    statusToggle.className = 'flex items-center gap-4 mt-4 status-toggle';
+                    statusToggle.innerHTML = `
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" name="is_active" class="sr-only peer" 
                                    ${employee.is_active ? 'checked' : ''}>
-                            <span class="ml-2">Active</span>
+                            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 
+                                      peer-focus:ring-blue-300 rounded-full peer 
+                                      peer-checked:after:translate-x-full peer-checked:after:border-white 
+                                      after:content-[''] after:absolute after:top-[2px] after:left-[2px] 
+                                      after:bg-white after:border-gray-300 after:border after:rounded-full 
+                                      after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600 cursor-pointer"></div>
+                            <span class="ml-3 text-sm font-medium text-gray-900">Active Status</span>
                         </label>
-                        <label class="inline-flex items-center">
-                            <input type="radio" name="is_active" value="false" class="form-radio" 
-                                   ${!employee.is_active ? 'checked' : ''}>
-                            <span class="ml-2">Inactive</span>
-                        </label>
-                    </div>
-                `;
+                    `;
+                    accountSection.appendChild(statusToggle);
+                }
                 
-                // Add status toggle before the form buttons
-                const buttonsContainer = form.querySelector('.flex.justify-end');
-                form.insertBefore(statusToggle, buttonsContainer);
-                
-                document.getElementById('employee_id').value = employeeId;
-                document.getElementById('is_edit').value = 'true';
-                document.getElementById('submitBtn').textContent = 'Save Changes';
                 document.getElementById('employeeModal').classList.remove('hidden');
             } else {
                 throw new Error(data.message);
@@ -394,5 +412,68 @@ function getCookie(name) {
     }
     return cookieValue;
 }
+
+// Function to handle form submission
+function submitForm(event) {
+    event.preventDefault();
+    const form = event.target;
+    const formData = new FormData(form);
+    
+    // Add active status if editing
+    if (form.querySelector('[name="is_active"]')) {
+        formData.set('is_active', form.querySelector('[name="is_active"]').checked);
+    }
+    
+    fetch(form.action, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            // Close the modal first
+            closeModal();
+            
+            // Show success message
+            Swal.fire({
+                icon: 'success',
+                title: 'Success',
+                text: data.message,
+                timer: 1500,
+                showConfirmButton: false
+            }).then(() => {
+                window.location.reload();
+            });
+        } else {
+            throw new Error(data.message);
+        }
+    })
+    .catch(error => {
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: error.message
+        });
+    });
+}
+
+// Make sure your form has the onsubmit handler
+document.getElementById('employeeForm').onsubmit = submitForm;
+
+// Add this to ensure cursor styles are maintained
+document.addEventListener('DOMContentLoaded', function() {
+    // Set initial cursor styles
+    document.querySelectorAll('input, button, select').forEach(element => {
+        if (element.type === 'text' || element.type === 'password' || element.type === 'email' || 
+            element.type === 'tel' || element.tagName.toLowerCase() === 'textarea') {
+            element.classList.add('cursor-text');
+        } else {
+            element.classList.add('cursor-pointer');
+        }
+    });
+});
 </script>
 {% endblock %}
