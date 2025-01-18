@@ -1,128 +1,144 @@
 {% extends 'TriadApp/admin/admin.html' %}
+{% csrf_token %}
+
+
 
 {% block content %}
-{% csrf_token %}
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<div class="p-6">
-    <div class="flex justify-between items-center mb-6">
-        <h1 class="text-2xl font-bold text-gray-800">Inventory Management</h1>
-        <button onclick="openModal()" 
-                class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg cursor-pointer">
-            Add Item
-        </button>
-    </div>
 
-    <!-- Items Table -->
-    <div class="bg-white shadow-md rounded-lg overflow-hidden">
-        <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-50">
-                <tr>
-                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Item ID
-                    </th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Image</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Size</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Measurement</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Add-ons</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Products</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                </tr>
-            </thead>
-            <tbody class="bg-white divide-y divide-gray-200">
-                {% for item in items %}
-                <tr>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {{ item.item_id }}
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        <img src="{{ item.picture.url }}" alt="{{ item.name }}" class="h-12 w-12 object-cover rounded">
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap">{{ item.name }}</td>
-                    <td class="px-6 py-4 whitespace-nowrap">{{ item.category.name }}</td>
-                    <td class="px-6 py-4 whitespace-nowrap">{{ item.size|default:"-" }}</td>
-                    <td class="px-6 py-4 whitespace-nowrap">{{ item.measurement|default:"-" }}</td>
-                    <td class="px-6 py-4 whitespace-nowrap">₱{{ item.price }}</td>
-                    <td class="px-6 py-4 whitespace-nowrap">{{ item.quantity }}</td>
-                    <td class="px-6 py-4">
-                        <div class="text-sm">
-                            {% for addon in item.itemaddon_set.all %}
-                            <div>{{ addon.supply.name }} ({{ addon.quantity_per_item }} {{ addon.supply.unit }})</div>
-                            {% empty %}
-                            -
-                            {% endfor %}
-                        </div>
-                    </td>
-                    <td class="px-6 py-4">
-                        <div class="text-sm">
-                            {% for product in item.itemproduct_set.all %}
-                            <div>{{ product.supply.name }} ({{ product.quantity_per_item }} {{ product.supply.unit }})</div>
-                            {% empty %}
-                            -
-                            {% endfor %}
-                        </div>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        {% if item.is_available %}
-                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                            Available
-                        </span>
-                        {% else %}
-                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
-                            Unavailable
-                        </span>
-                        {% endif %}
-                    </td>
-                    <td class="px-6 py-4 text-sm">
-                        <button onclick="openEditModal('{{ item.id }}')" 
-                                class="text-blue-600 hover:text-blue-700 font-medium mr-3 cursor-pointer">
-                            Edit
-                        </button>
-                        <button onclick="confirmDelete('{{ item.id }}', '{{ item.name|escapejs }}')" 
-                                class="text-red-600 hover:text-red-700 font-medium cursor-pointer">
-                            Delete
-                        </button>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+<div class="flex-1 p-6 h-screen">
+    <div class="w-full mx-auto h-full flex flex-col">
+        <!-- Header with Add Button -->
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-2xl font-bold">Inventory Management</h2>
+            <button onclick="openAddModal()" 
+                    class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-md flex items-center gap-2">
+                <span>+</span> Add New Item
+            </button>
+        </div>
+
+        <!-- Add this after the header and before the table -->
+        <div class="mb-6">
+            <div class="flex gap-4">
+                <div class="flex-1">
+                    <input type="text" 
+                           id="searchInput" 
+                           placeholder="Search by ID, name, or category..." 
+                           class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500">
+                </div>
+                <select id="categoryFilter" 
+                        class="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500">
+                    <option value="">All Categories</option>
+                    {% for category in categories %}
+                        <option value="{{ category.name }}">{{ category.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <!-- Items Table -->
+        <div class="bg-white/80 rounded-lg overflow-hidden shadow">
+            <table class="min-w-full">
+                <thead>
+                    <tr class="bg-gray-800 text-white">
+                        <th class="px-6 py-4 text-left text-sm font-semibold">Picture</th>
+                        <th class="px-6 py-4 text-left text-sm font-semibold">Item ID</th>
+                        <th class="px-6 py-4 text-left text-sm font-semibold">Name</th>
+                        <th class="px-6 py-4 text-left text-sm font-semibold">Category</th>
+                        <th class="px-6 py-4 text-left text-sm font-semibold">Size/Measurement</th>
+                        <th class="px-6 py-4 text-left text-sm font-semibold">Price</th>
+                        <th class="px-6 py-4 text-left text-sm font-semibold">Quantity</th>
+                        <th class="px-6 py-4 text-left text-sm font-semibold">Supplies</th>
+                        <th class="px-6 py-4 text-left text-sm font-semibold">Add-ons</th>
+                        <th class="px-6 py-4 text-left text-sm font-semibold">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    {% for item in items %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 text-sm">
+                            {% if item.picture %}
+                                <img src="{{ item.picture.url }}" alt="{{ item.name }}" class="w-16 h-16 object-cover rounded-md">
+                            {% else %}
+                                <div class="w-16 h-16 bg-gray-200 rounded-md flex items-center justify-center">
+                                    <span class="text-gray-400">No image</span>
+                                </div>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 text-sm text-gray-900">{{ item.item_id }}</td>
+                        <td class="px-6 py-4 text-sm text-gray-900">{{ item.name }}</td>
+                        <td class="px-6 py-4 text-sm text-gray-600">{{ item.category.name }}</td>
+                        <td class="px-6 py-4 text-sm text-gray-600">
+                            {% if item.size or item.measurement %}
+                                {{ item.size|default:'' }}{% if item.size and item.measurement %} / {% endif %}{{ item.measurement|default:'' }}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 text-sm text-gray-600">₱{{ item.price }}</td>
+                        <td class="px-6 py-4 text-sm text-gray-600">{{ item.quantity }}</td>
+                        <td class="px-6 py-4 text-sm text-gray-600">
+                            <ul class="list-disc list-inside">
+                                {% for supply in item.supplies.all %}
+                                    <li>{{ supply.name }} ({{ supply.quantity_per_item }} per item)</li>
+                                {% endfor %}
+                            </ul>
+                        </td>
+                        <td class="px-6 py-4 text-sm text-gray-600">
+                            <ul class="list-disc list-inside">
+                                {% for addon in item.add_ons.all %}
+                                    <li>{{ addon.name }} (₱{{ addon.price }})</li>
+                                {% endfor %}
+                            </ul>
+                        </td>
+                        <td class="px-6 py-4 text-sm">
+                            <button onclick="openEditModal('{{ item.id }}')" 
+                                    class="text-blue-600 hover:text-blue-700 font-medium mr-3">
+                                Edit
+                            </button>
+                            <button onclick="confirmDelete('{{ item.id }}', '{{ item.name|escapejs }}')" 
+                                    class="text-red-600 hover:text-red-700 font-medium">
+                                Delete
+                            </button>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="10" class="px-6 py-4 text-center text-sm text-gray-500">
+                            No items found.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 
-<!-- Item Modal -->
-<div id="itemModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden">
+<!-- Add/Edit Modal -->
+<div id="itemModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
     <div class="relative top-20 mx-auto p-5 border w-3/4 shadow-lg rounded-md bg-white">
         <div class="mt-3">
             <h3 class="text-lg font-medium leading-6 text-gray-900 mb-4" id="modalTitle">Add Item</h3>
-            <form id="itemForm" onsubmit="handleSubmit(event)" enctype="multipart/form-data">
+            <form id="itemForm" onsubmit="handleSubmit(event)" method="POST" enctype="multipart/form-data">
                 {% csrf_token %}
-                <!-- Basic Information -->
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div class="mb-4">
-                        <label class="block text-gray-700 text-sm font-bold mb-2">Item ID</label>
-                        <input type="text" 
-                               name="item_id" 
-                               id="itemId"
-                               class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-600" 
-                               readonly>
+                        <label class="block text-gray-700 text-sm font-bold mb-2">Item ID*</label>
+                        <input type="text" name="item_id" 
+                               id="itemIdField"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-100" 
+                               required>
                     </div>
                     <div class="mb-4">
                         <label class="block text-gray-700 text-sm font-bold mb-2">Name*</label>
-                        <input type="text" 
-                               name="name" 
-                               id="itemName"
+                        <input type="text" name="name" 
                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500" 
                                required>
                     </div>
                     <div class="mb-4">
                         <label class="block text-gray-700 text-sm font-bold mb-2">Category*</label>
                         <select name="category" 
-                                id="itemCategory"
                                 class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500" 
                                 required>
                             <option value="">Select Category</option>
@@ -133,88 +149,79 @@
                     </div>
                     <div class="mb-4">
                         <label class="block text-gray-700 text-sm font-bold mb-2">Price*</label>
-                        <input type="number" 
-                               name="price" 
-                               id="itemPrice"
-                               step="0.01"
+                        <input type="number" step="0.01" name="price" 
                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500" 
                                required>
-                    </div>
-                    <div class="mb-4">
-                        <label class="block text-gray-700 text-sm font-bold mb-2">Size</label>
-                        <input type="text" 
-                               name="size" 
-                               id="itemSize"
-                               placeholder="e.g., 500ml, Large, 12oz"
-                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500">
-                    </div>
-                    <div class="mb-4">
-                        <label class="block text-gray-700 text-sm font-bold mb-2">Measurement</label>
-                        <input type="text" 
-                               name="measurement" 
-                               id="itemMeasurement"
-                               placeholder="e.g., 250g, 1kg"
-                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500">
                     </div>
                     <div class="mb-4">
                         <label class="block text-gray-700 text-sm font-bold mb-2">Quantity*</label>
-                        <input type="number" 
-                               name="quantity" 
-                               id="itemQuantity"
-                               min="0"
-                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500" 
-                               required>
-                    </div>
-                </div>
-
-                <!-- Image and Date Section -->
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                    <div class="mb-4">
-                        <label class="block text-gray-700 text-sm font-bold mb-2">Picture*</label>
-                        <div id="currentPictureContainer" class="mb-2 hidden">
-                            <img id="currentPicture" class="h-32 w-32 object-cover rounded mb-2">
-                        </div>
-                        <input type="file" 
-                               name="picture" 
-                               id="itemPicture"
-                               accept="image/*"
+                        <input type="number" name="quantity" 
                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500" 
                                required>
                     </div>
                     <div class="mb-4">
-                        <label class="block text-gray-700 text-sm font-bold mb-2">Expiration Date</label>
-                        <input type="datetime-local" 
-                               name="expiration_date" 
-                               id="itemExpirationDate"
+                        <label class="block text-gray-700 text-sm font-bold mb-2">Size (Optional)</label>
+                        <input type="text" name="size" 
                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500">
                     </div>
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2">Measurement (Optional)</label>
+                        <input type="text" name="measurement" 
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+                               placeholder="e.g., ml, g, oz">
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2">Picture</label>
+                        <div class="space-y-2">
+                            <!-- Current picture preview -->
+                            <div id="currentPictureContainer" class="hidden">
+                                <img id="currentPicture" src="" alt="Current item picture" 
+                                     class="w-32 h-32 object-cover rounded-md mb-2">
+                                <p class="text-sm text-gray-600">Current picture</p>
+                            </div>
+                            <!-- File input -->
+                            <input type="file" name="picture" accept="image/*"
+                                   id="pictureInput"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500">
+                            <p class="text-sm text-gray-500">Leave empty to keep current picture when editing</p>
+                        </div>
+                    </div>
                 </div>
 
-                <!-- Products Section -->
+                <!-- Supplies Section -->
                 <div class="mb-6">
-                    <label class="block text-gray-700 text-sm font-bold mb-2">Products*</label>
-                    <div id="productContainer" class="space-y-2">
+                    <label class="block text-gray-700 text-sm font-bold mb-2">Supplies*</label>
+                    <div id="supplyContainer" class="space-y-2">
                         <div class="grid grid-cols-6 gap-4 items-center">
-                            <select name="products[]" 
+                            <select name="supplies[]" 
                                     class="col-span-4 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
                                     required>
-                                <option value="">Select Product</option>
-                                {% for supply in product_supplies %}
-                                <option value="{{ supply.id }}">{{ supply.name }} ({{ supply.quantity }} {{ supply.unit }})</option>
+                                <option value="">Select Supply</option>
+                                {% for supply in supplies %}
+                                    <option value="{{ supply.id }}">
+                                        {{ supply.supply_id }} - {{ supply.name }} (Available: {{ supply.quantity }})
+                                    </option>
                                 {% endfor %}
                             </select>
                             <input type="number" 
-                                   name="product_quantities[]" 
+                                   name="supply_quantities[]" 
                                    step="0.01"
-                                   placeholder="Quantity"
+                                   placeholder="Quantity per item"
                                    class="col-span-2 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
                                    required>
+                            <button type="button" 
+                                    onclick="this.parentElement.remove()" 
+                                    class="text-red-600 hover:text-red-800">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                </svg>
+                            </button>
                         </div>
                     </div>
                     <button type="button" 
-                            onclick="addSupplyField('productContainer', 'products[]', 'product_quantities[]', true)" 
+                            onclick="addSupplyField()" 
                             class="mt-2 text-blue-600 hover:text-blue-700 text-sm font-medium">
-                        + Add another product
+                        + Add another supply
                     </button>
                 </div>
 
@@ -223,36 +230,39 @@
                     <label class="block text-gray-700 text-sm font-bold mb-2">Add-ons</label>
                     <div id="addOnContainer" class="space-y-2">
                         <div class="grid grid-cols-6 gap-4 items-center">
-                            <select name="add_ons[]" 
-                                    class="col-span-4 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500">
-                                <option value="">Select Add-on</option>
-                                {% for supply in add_on_supplies %}
-                                <option value="{{ supply.id }}">{{ supply.name }} ({{ supply.quantity }} {{ supply.unit }})</option>
-                                {% endfor %}
-                            </select>
+                            <input type="text" 
+                                   name="addon_names[]" 
+                                   placeholder="Add-on Name"
+                                   class="col-span-3 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500">
                             <input type="number" 
-                                   name="add_on_quantities[]" 
+                                   name="addon_prices[]" 
                                    step="0.01"
-                                   min="0"
-                                   placeholder="Quantity"
+                                   placeholder="Price"
                                    class="col-span-2 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500">
+                            <button type="button" 
+                                    onclick="this.parentElement.remove()" 
+                                    class="text-red-600 hover:text-red-800">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                </svg>
+                            </button>
                         </div>
                     </div>
                     <button type="button" 
-                            onclick="addSupplyField('addOnContainer', 'add_ons[]', 'add_on_quantities[]', false)" 
+                            onclick="addAddOnField()" 
                             class="mt-2 text-blue-600 hover:text-blue-700 text-sm font-medium">
                         + Add another add-on
                     </button>
                 </div>
 
-                <div class="flex justify-end space-x-3 mt-6">
+                <div class="flex items-center justify-end space-x-4 mt-4">
                     <button type="button" 
                             onclick="closeModal()" 
                             class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded">
                         Cancel
                     </button>
                     <button type="submit" 
-                            id="submitBtn"
+                            id="modalSubmitBtn"
                             class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
                         Add Item
                     </button>
@@ -263,47 +273,50 @@
 </div>
 
 <script>
-    // Safe JSON parsing function
-    function safeJSONParse(str, defaultValue = []) {
-        try {
-            return JSON.parse(str);
-        } catch (e) {
-            console.error('JSON Parse Error:', e);
-            return defaultValue;
-        }
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize containers
+    const supplyContainer = document.getElementById('supplyContainer');
+    const addOnContainer = document.getElementById('addOnContainer');
+    const itemForm = document.getElementById('itemForm');
+    const itemModal = document.getElementById('itemModal');
+    const modalTitle = document.getElementById('modalTitle');
+    const modalSubmitBtn = document.getElementById('modalSubmitBtn');
+
+    window.openAddModal = function() {
+        modalTitle.textContent = 'Add New Item';
+        itemForm.reset();
+        modalSubmitBtn.textContent = 'Add Item';
+        
+        // Enable item_id field for new items
+        const itemIdField = document.getElementById('itemIdField');
+        itemIdField.removeAttribute('readonly');
+        itemIdField.classList.remove('bg-gray-100');
+        
+        // Hide current picture container and make picture input required
+        document.getElementById('currentPictureContainer').classList.add('hidden');
+        document.getElementById('pictureInput').required = true;
+        
+        itemForm.action = '/stall-admin/items/add/';
+        itemModal.classList.remove('hidden');
     }
 
-    // Initialize variables first with safe parsing
-    let currentItemId = null;
-    const productSupplies = safeJSONParse('{{ product_supplies|escapejs|safe }}', []);
-    const addOnSupplies = safeJSONParse('{{ add_on_supplies|escapejs|safe }}', []);
+    window.closeModal = function() {
+        itemModal.classList.add('hidden');
+    }
 
-    function addSupplyField(containerId, selectName, quantityName, isRequired = false, selectedValue = null, selectedQuantity = null) {
-        const container = document.getElementById(containerId);
+    window.addAddOnField = function() {
         const div = document.createElement('div');
         div.className = 'grid grid-cols-6 gap-4 items-center';
-        
-        const supplies = containerId === 'productContainer' ? productSupplies : addOnSupplies;
-        
         div.innerHTML = `
-            <select name="${selectName}" 
-                    class="col-span-4 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    ${isRequired ? 'required' : ''}>
-                <option value="">Select ${containerId === 'productContainer' ? 'Product' : 'Add-on'}</option>
-                ${supplies.map(supply => `
-                    <option value="${supply.id}" ${selectedValue == supply.id ? 'selected' : ''}>
-                        ${supply.name} (${supply.quantity})
-                    </option>
-                `).join('')}
-            </select>
+            <input type="text" 
+                   name="addon_names[]" 
+                   placeholder="Add-on Name"
+                   class="col-span-3 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500">
             <input type="number" 
-                   name="${quantityName}" 
+                   name="addon_prices[]" 
                    step="0.01"
-                   min="0"
-                   placeholder="Quantity"
-                   value="${selectedQuantity || ''}"
-                   class="col-span-2 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-                   ${isRequired ? 'required' : ''}>
+                   placeholder="Price"
+                   class="col-span-2 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500">
             <button type="button" 
                     onclick="this.parentElement.remove()" 
                     class="text-red-600 hover:text-red-800">
@@ -312,161 +325,215 @@
                 </svg>
             </button>
         `;
+        addOnContainer.appendChild(div);
+    }
+
+    window.addSupplyField = function() {
+        const supplyContainer = document.getElementById('supplyContainer');
+        const firstSupplySelect = document.querySelector('select[name="supplies[]"]');
         
-        container.appendChild(div);
-    }
-
-    // Modal functions
-    function openModal(itemId = null) {
-        if (itemId) {
-            openEditModal(itemId);
-        } else {
-            // Reset for new item
-            const modal = document.getElementById('itemModal');
-            const form = document.getElementById('itemForm');
-            const modalTitle = document.getElementById('modalTitle');
-            const submitBtn = document.getElementById('submitBtn');
-
-            currentItemId = null;
-            form.reset();
-            modalTitle.textContent = 'Add Item';
-            submitBtn.textContent = 'Add Item';
-            document.getElementById('currentPictureContainer').classList.add('hidden');
-            document.getElementById('itemPicture').setAttribute('required', '');
-            document.getElementById('productContainer').innerHTML = '';
-            document.getElementById('addOnContainer').innerHTML = '';
-            addSupplyField('productContainer', 'products[]', 'product_quantities[]', true);
-            modal.classList.remove('hidden');
+        if (!supplyContainer || !firstSupplySelect) {
+            console.error('Required elements not found');
+            return;
         }
+
+        const div = document.createElement('div');
+        div.className = 'grid grid-cols-6 gap-4 items-center';
+        div.innerHTML = `
+            <select name="supplies[]" 
+                    class="col-span-4 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    required>
+                ${firstSupplySelect.innerHTML}
+            </select>
+            <input type="number" 
+                   name="supply_quantities[]" 
+                   step="0.01"
+                   placeholder="Quantity per item"
+                   class="col-span-2 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+                   required>
+            <button type="button" 
+                    onclick="this.parentElement.remove()" 
+                    class="text-red-600 hover:text-red-800">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        `;
+        supplyContainer.appendChild(div);
     }
 
-    async function openEditModal(itemId) {
-        currentItemId = itemId;
-        const modal = document.getElementById('itemModal');
-        const form = document.getElementById('itemForm');
-        const modalTitle = document.getElementById('modalTitle');
-        const submitBtn = document.getElementById('submitBtn');
-
+    window.openEditModal = function(itemId) {
         modalTitle.textContent = 'Edit Item';
-        submitBtn.textContent = 'Update Item';
-
-        try {
-            const response = await fetch(`/stall-admin/items/${itemId}/edit/`);
-            const result = await response.json();
-
-            if (result.status === 'success') {
-                const data = result.data;
-
-                // Fill basic fields
-                form.querySelector('#itemId').value = data.item_id;
-                form.querySelector('#itemName').value = data.name;
-                form.querySelector('#itemCategory').value = data.category_id;
-                form.querySelector('#itemPrice').value = data.price;
-                form.querySelector('#itemQuantity').value = data.quantity;
-                form.querySelector('#itemSize').value = data.size || '';
-                form.querySelector('#itemMeasurement').value = data.measurement || '';
-                if (data.expiration_date) {
-                    form.querySelector('#itemExpirationDate').value = data.expiration_date.split('.')[0];
+        modalSubmitBtn.textContent = 'Update Item';
+        
+        // Fetch item data
+        fetch(`/stall-admin/items/${itemId}/edit/`)
+            .then(response => response.json())
+            .then(response => {
+                if (response.status === 'success') {
+                    const data = response.data;
+                    
+                    // Set basic fields
+                    const itemIdField = document.getElementById('itemIdField');
+                    itemIdField.value = data.item_id;
+                    itemIdField.setAttribute('readonly', true);
+                    itemIdField.classList.add('bg-gray-100');
+                    
+                    itemForm.elements['name'].value = data.name;
+                    itemForm.elements['category'].value = data.category_id;
+                    itemForm.elements['price'].value = data.price;
+                    itemForm.elements['quantity'].value = data.quantity;
+                    itemForm.elements['size'].value = data.size;
+                    itemForm.elements['measurement'].value = data.measurement;
+                    
+                    // Handle picture
+                    const currentPictureContainer = document.getElementById('currentPictureContainer');
+                    const currentPicture = document.getElementById('currentPicture');
+                    const pictureInput = document.getElementById('pictureInput');
+                    
+                    if (data.picture_url) {
+                        currentPictureContainer.classList.remove('hidden');
+                        currentPicture.src = data.picture_url;
+                        pictureInput.required = false; // Not required when editing
+                    } else {
+                        currentPictureContainer.classList.add('hidden');
+                        pictureInput.required = true;
+                    }
+                    
+                    // Clear existing supplies and add-ons
+                    const supplyContainer = document.getElementById('supplyContainer');
+                    const addOnContainer = document.getElementById('addOnContainer');
+                    
+                    // Keep the first supply row but clear its values
+                    const firstSupplyRow = supplyContainer.firstElementChild;
+                    if (firstSupplyRow) {
+                        firstSupplyRow.querySelector('select[name="supplies[]"]').value = '';
+                        firstSupplyRow.querySelector('input[name="supply_quantities[]"]').value = '';
+                    }
+                    
+                    // Remove any additional supply rows
+                    while (supplyContainer.children.length > 1) {
+                        supplyContainer.lastElementChild.remove();
+                    }
+                    
+                    // Clear add-ons
+                    addOnContainer.innerHTML = '';
+                    
+                    // Add existing supplies
+                    data.supplies.forEach((supply, index) => {
+                        if (index === 0 && firstSupplyRow) {
+                            // Use the first row
+                            firstSupplyRow.querySelector('select[name="supplies[]"]').value = supply.id;
+                            firstSupplyRow.querySelector('input[name="supply_quantities[]"]').value = supply.quantity;
+                        } else {
+                            // Add new rows for additional supplies
+                            addSupplyField();
+                            const lastSupplyRow = supplyContainer.lastElementChild;
+                            lastSupplyRow.querySelector('select[name="supplies[]"]').value = supply.id;
+                            lastSupplyRow.querySelector('input[name="supply_quantities[]"]').value = supply.quantity;
+                        }
+                    });
+                    
+                    // Add existing add-ons
+                    data.add_ons.forEach(addon => {
+                        addAddOnField();
+                        const lastAddonRow = addOnContainer.lastElementChild;
+                        lastAddonRow.querySelector('input[name="addon_names[]"]').value = addon.name;
+                        lastAddonRow.querySelector('input[name="addon_prices[]"]').value = addon.price;
+                    });
+                    
+                    // Update form action
+                    itemForm.action = `/stall-admin/items/${itemId}/edit/`;
+                    
+                    // Show modal
+                    itemModal.classList.remove('hidden');
+                } else {
+                    throw new Error(response.message);
                 }
-
-                // Handle picture
-                if (data.picture_url) {
-                    document.getElementById('currentPicture').src = data.picture_url;
-                    document.getElementById('currentPictureContainer').classList.remove('hidden');
-                    document.getElementById('itemPicture').removeAttribute('required');
-                }
-
-                // Clear and fill products
-                const productContainer = document.getElementById('productContainer');
-                productContainer.innerHTML = '';
-                data.products.forEach(product => {
-                    addSupplyField('productContainer', 'products[]', 'product_quantities[]', true, 
-                                 product.supply_id, product.quantity);
+            })
+            .catch(error => {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: error.message
                 });
-
-                // Clear and fill add-ons
-                const addOnContainer = document.getElementById('addOnContainer');
-                addOnContainer.innerHTML = '';
-                data.add_ons.forEach(addon => {
-                    addSupplyField('addOnContainer', 'add_ons[]', 'add_on_quantities[]', false, 
-                                 addon.supply_id, addon.quantity);
-                });
-
-                modal.classList.remove('hidden');
-            } else {
-                throw new Error(result.message);
-            }
-        } catch (error) {
-            Swal.fire({
-                icon: 'error',
-                title: 'Error',
-                text: error.message || 'Failed to load item data'
             });
-        }
     }
 
-    function closeModal() {
-        const modal = document.getElementById('itemModal');
-        const form = document.getElementById('itemForm');
-        const modalTitle = document.getElementById('modalTitle');
-        const submitBtn = document.getElementById('submitBtn');
-
-        form.reset();
-        modalTitle.textContent = 'Add Item';
-        submitBtn.textContent = 'Add Item';
-        document.getElementById('currentPictureContainer').classList.add('hidden');
-        document.getElementById('itemPicture').setAttribute('required', '');
-        document.getElementById('productContainer').innerHTML = '';
-        document.getElementById('addOnContainer').innerHTML = '';
-        addSupplyField('productContainer', 'products[]', 'product_quantities[]', true);
-        currentItemId = null;
-        modal.classList.add('hidden');
-    }
-
-    async function handleSubmit(event) {
+    window.handleSubmit = function(event) {
         event.preventDefault();
-        const form = event.target;
-        const formData = new FormData(form);
-        const url = currentItemId ? `/stall-admin/items/${currentItemId}/edit/` : '/stall-admin/items/add/';
+        const formData = new FormData(event.target);
 
-        try {
-            const response = await fetch(url, {
-                method: 'POST',
-                body: formData,
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-                }
-            });
-
-            const result = await response.json();
-
-            if (result.status === 'success') {
+        fetch(event.target.action, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
                 Swal.fire({
                     icon: 'success',
-                    title: 'Success!',
-                    text: result.message,
+                    title: 'Success',
+                    text: data.message,
                     timer: 1500,
                     showConfirmButton: false
                 }).then(() => {
+                    closeModal();
                     window.location.reload();
                 });
             } else {
-                throw new Error(result.message);
+                throw new Error(data.message);
             }
-        } catch (error) {
+        })
+        .catch(error => {
             Swal.fire({
                 icon: 'error',
                 title: 'Error',
-                text: error.message || 'An error occurred while saving'
+                text: error.message
             });
-        }
+        });
     }
 
-    function confirmDelete(itemId, itemName) {
+    // Optional: Add picture preview for new uploads
+    document.getElementById('pictureInput').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const currentPicture = document.getElementById('currentPicture');
+                const currentPictureContainer = document.getElementById('currentPictureContainer');
+                currentPicture.src = e.target.result;
+                currentPictureContainer.classList.remove('hidden');
+            }
+            reader.readAsDataURL(file);
+        }
+    });
+
+    window.confirmDelete = function(itemId, itemName) {
+        // Get CSRF token from the cookie
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+        
+        const csrftoken = getCookie('csrftoken');
+
         Swal.fire({
             title: 'Are you sure?',
-            text: `Do you want to delete "${itemName}"?`,
+            text: `Do you want to delete "${itemName}"? This action cannot be undone.`,
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#d33',
@@ -475,151 +542,115 @@
             cancelButtonText: 'Cancel'
         }).then((result) => {
             if (result.isConfirmed) {
-                deleteItem(itemId);
-            }
-        });
-    }
-
-    function deleteItem(itemId) {
-        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
-        
-        fetch(`/stall-admin/items/delete/${itemId}/`, {
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': csrfToken,
-            },
-            credentials: 'same-origin'
-        })
-        .then(response => response.json())
-        .then(result => {
-            if (result.status === 'success') {
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Deleted!',
-                    text: result.message,
-                    timer: 1500
-                }).then(() => {
-                    window.location.reload();
+                // Send delete request
+                fetch(`/stall-admin/items/delete/${itemId}/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrftoken,
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    credentials: 'same-origin' // This is important for CSRF
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.status === 'success') {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Deleted!',
+                            text: data.message,
+                            timer: 1500,
+                            showConfirmButton: false
+                        }).then(() => {
+                            window.location.reload();
+                        });
+                    } else {
+                        throw new Error(data.message || 'Error deleting item');
+                    }
+                })
+                .catch(error => {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: error.message || 'Failed to delete item'
+                    });
                 });
+            }
+        });
+    }
+
+    // Search and filter functionality
+    const searchInput = document.getElementById('searchInput');
+    const categoryFilter = document.getElementById('categoryFilter');
+    const tableBody = document.querySelector('table tbody');
+    const rows = Array.from(tableBody.querySelectorAll('tr:not(.empty-row)'));
+
+    function filterTable() {
+        const searchTerm = searchInput.value.toLowerCase();
+        const categoryTerm = categoryFilter.value.toLowerCase();
+        let hasVisibleRows = false;
+
+        rows.forEach(row => {
+            const itemId = row.querySelector('td:nth-child(2)').textContent.toLowerCase();
+            const name = row.querySelector('td:nth-child(3)').textContent.toLowerCase();
+            const category = row.querySelector('td:nth-child(4)').textContent.toLowerCase();
+            
+            const matchesSearch = itemId.includes(searchTerm) || 
+                                name.includes(searchTerm) || 
+                                category.includes(searchTerm);
+            const matchesCategory = !categoryTerm || category === categoryTerm;
+
+            if (matchesSearch && matchesCategory) {
+                row.classList.remove('hidden');
+                hasVisibleRows = true;
             } else {
-                throw new Error(result.message);
-            }
-        })
-        .catch(error => {
-            Swal.fire({
-                icon: 'error',
-                title: 'Error',
-                text: error.message || 'Failed to delete item'
-            });
-        });
-    }
-
-    // Helper function to get CSRF token
-    function getCookie(name) {
-        let cookieValue = null;
-        if (document.cookie && document.cookie !== '') {
-            const cookies = document.cookie.split(';');
-            for (let i = 0; i < cookies.length; i++) {
-                const cookie = cookies[i].trim();
-                if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                    break;
-                }
-            }
-        }
-        return cookieValue;
-    }
-
-    // DOM Ready handler
-    document.addEventListener('DOMContentLoaded', function() {
-        // Initialize first product field
-        addSupplyField('productContainer', 'products[]', 'product_quantities[]', true);
-
-        // Close modal when clicking outside
-        document.getElementById('itemModal').addEventListener('click', function(e) {
-            if (e.target === this) {
-                closeModal();
+                row.classList.add('hidden');
             }
         });
 
-        // Function to generate item ID
-        function generateItemId() {
-            const stallPrefix = "{{ stall.name|slice:':3'|upper }}";
-            const timestamp = new Date().toISOString()
-                .slice(2,16)
-                .replace(/[-T:]/g, '');
-            const randomSuffix = Math.floor(Math.random() * 10000)
-                .toString()
-                .padStart(4, '0');
-            return `${stallPrefix}-${timestamp}-${randomSuffix}`;
-        }
-
-        // Set initial item ID when form is shown
-        const addItemModal = document.getElementById('addItemModal');
-        if (addItemModal) {
-            addItemModal.addEventListener('show.bs.modal', function() {
-                document.getElementById('item_id').value = generateItemId();
-            });
-        }
-
-        // Update item ID when form is reset
-        const addItemForm = document.getElementById('addItemForm');
-        if (addItemForm) {
-            addItemForm.addEventListener('reset', function() {
-                document.getElementById('item_id').value = generateItemId();
-            });
-        }
-    });
-
-    // Update your existing addItem function
-    function addItem(event) {
-        event.preventDefault();
+        // Show or hide the "No items found" message
+        const emptyMessage = tableBody.querySelector('.empty-row') || 
+            createEmptyRow(tableBody);
         
-        const itemId = document.getElementById('item_id').value;
-        
-        // Validate item ID format
-        if (!/^[A-Za-z0-9-]+$/.test(itemId)) {
-            Swal.fire({
-                icon: 'error',
-                title: 'Invalid Item ID',
-                text: 'Item ID can only contain letters, numbers, and hyphens'
-            });
-            return;
-        }
-        
-        const formData = new FormData(event.target);
-        
-        fetch('/stall-admin/inventory/add/', {
-            method: 'POST',
-            body: formData,
-            headers: {
-                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-            }
-        })
-        .then(response => response.json())
-        .then(result => {
-            if (result.status === 'success') {
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Success',
-                    text: result.message,
-                    timer: 1500
-                }).then(() => {
-                    window.location.reload();
-                });
-            } else {
-                throw new Error(result.message);
-            }
-        })
-        .catch(error => {
-            Swal.fire({
-                icon: 'error',
-                title: 'Error',
-                text: error.message || 'Failed to add item'
-            });
-        });
+        emptyMessage.classList.toggle('hidden', hasVisibleRows);
     }
 
- 
+    function createEmptyRow(tableBody) {
+        const emptyRow = document.createElement('tr');
+        emptyRow.className = 'empty-row';
+        emptyRow.innerHTML = `
+            <td colspan="10" class="px-6 py-4 text-center text-sm text-gray-500">
+                No items found.
+            </td>
+        `;
+        tableBody.appendChild(emptyRow);
+        return emptyRow;
+    }
+
+    // Add event listeners for search and filter
+    searchInput.addEventListener('input', filterTable);
+    categoryFilter.addEventListener('change', filterTable);
+
+    // Add debounce to search for better performance
+    function debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    }
+
+    const debouncedFilter = debounce(filterTable, 300);
+    searchInput.addEventListener('input', debouncedFilter);
+});
 </script>
 {% endblock %}

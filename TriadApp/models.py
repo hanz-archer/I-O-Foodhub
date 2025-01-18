@@ -109,22 +109,12 @@ class Supplier(models.Model):
         return f"{self.firstname} {self.lastname} - {self.stall.name}"
 
 class Supply(models.Model):
-    CATEGORY_CHOICES = [
-        ('product', 'Product'),
-        ('add_on', 'Add On'),
-    ]
-    
     supply_id = models.CharField(max_length=50)
     name = models.CharField(max_length=255)
     description = models.CharField(max_length=50, blank=True, null=True)
-    category = models.CharField(
-        max_length=10,
-        choices=CATEGORY_CHOICES,
-        default='product'
-    )
     quantity = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     cost = models.DecimalField(max_digits=10, decimal_places=2)
-    date_added = models.DateField()  # New field for date added
+    date_added = models.DateField()
     stall = models.ForeignKey('Stall', on_delete=models.CASCADE, related_name='supplies', to_field='store_id')
     supplier = models.ForeignKey('Supplier', on_delete=models.CASCADE, related_name='supplies')
     supplier_name = models.CharField(max_length=255, null=True, blank=True)
@@ -142,7 +132,7 @@ class Supply(models.Model):
 
 
 class Item(models.Model):
-    item_id = models.CharField(max_length=50, unique=True, editable=False)
+    item_id = models.CharField(max_length=50)
     stall = models.ForeignKey('Stall', on_delete=models.CASCADE, related_name='items')
     name = models.CharField(max_length=255)
     picture = models.ImageField(upload_to='item_images/')
@@ -155,6 +145,7 @@ class Item(models.Model):
     is_available = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    supplies = models.ManyToManyField('Supply', through='ItemSupply')
 
     def save(self, *args, **kwargs):
         if not self.item_id:
@@ -179,8 +170,21 @@ class Item(models.Model):
 
 
 class ItemAddOn(models.Model):
-    item = models.ForeignKey(Item, on_delete=models.CASCADE)
-    supply = models.ForeignKey('Supply', on_delete=models.CASCADE)
+    item = models.ForeignKey(Item, on_delete=models.CASCADE, related_name='add_ons')
+    name = models.CharField(max_length=255)
+    price = models.DecimalField(max_digits=10, decimal_places=2)
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.item.name} - {self.name} (₱{self.price})"
+
+    class Meta:
+        ordering = ['name']
+
+class ItemSupply(models.Model):
+    item = models.ForeignKey(Item, on_delete=models.CASCADE, related_name='item_supplies')
+    supply = models.ForeignKey('Supply', on_delete=models.CASCADE, related_name='item_supplies')
     quantity_per_item = models.DecimalField(
         max_digits=10, 
         decimal_places=2,
@@ -188,8 +192,6 @@ class ItemAddOn(models.Model):
     )
 
     def clean(self):
-        if self.supply.category != 'add_on':
-            raise ValidationError("Selected supply must be an add-on")
         if self.quantity_per_item > self.supply.quantity:
             raise ValidationError("Quantity per item cannot exceed available supply quantity")
 
@@ -197,30 +199,12 @@ class ItemAddOn(models.Model):
         self.clean()
         super().save(*args, **kwargs)
 
-    class Meta:
-        unique_together = ['item', 'supply']
-
-class ItemProduct(models.Model):
-    item = models.ForeignKey(Item, on_delete=models.CASCADE)
-    supply = models.ForeignKey('Supply', on_delete=models.CASCADE)
-    quantity_per_item = models.DecimalField(
-        max_digits=10, 
-        decimal_places=2,
-        help_text="Quantity of supply used per item"
-    )
-
-    def clean(self):
-        if self.supply.category != 'product':
-            raise ValidationError("Selected supply must be a product")
-        if self.quantity_per_item > self.supply.quantity:
-            raise ValidationError("Quantity per item cannot exceed available supply quantity")
-
-    def save(self, *args, **kwargs):
-        self.clean()
-        super().save(*args, **kwargs)
+    def __str__(self):
+        return f"{self.item.name} - {self.supply.name} ({self.quantity_per_item})"
 
     class Meta:
         unique_together = ['item', 'supply']
+        verbose_name_plural = "Item supplies"
 
 
 
