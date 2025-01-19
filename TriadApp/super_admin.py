@@ -16,6 +16,10 @@ import os
 import time
 from datetime import datetime, date
 from django.contrib.auth import get_user_model
+from django.utils import timezone
+from .models import StallContract, StallPayment
+from decimal import Decimal
+from django.db import transaction
 CustomUser = get_user_model()
 
 
@@ -92,41 +96,46 @@ def update_super_admin_profile(request):
 
 @superuser_required
 def add_stall(request):
-    
-    # First check if this is a redirect from a successful submission
-    if request.method == "GET" and request.GET.get("success"):
-        context = {
-            "success": True,
-            "message": request.GET.get("message"),
-            "stalls": Stall.objects.all(),
-            "super_admin": request.user
-        }
-        return render(request, "TriadApp/superadmin/add_stall.html", context)
-
-    if request.method == "POST":
-        name = request.POST.get("name")
-        contact_number = request.POST.get("contact_number")
-        logo = request.FILES.get("logo")
-        
+    if request.method == 'POST':
         try:
-            stall = Stall(name=name, logo=logo, contact_number=contact_number)
-            stall.save()
-            # Redirect after successful POST
-            return redirect(f"{reverse('add_stall')}?success=true&message=Stall added successfully")
+            with transaction.atomic():
+                # Create Stall
+                stall = Stall.objects.create(
+                    name=request.POST.get('name'),
+                    contact_number=request.POST.get('contact_number'),
+                    logo=request.FILES.get('logo'),
+                    is_active=True  # Set active since contract will be created
+                )
+                
+                # Create Contract
+                contract = StallContract.objects.create(
+                    stall=stall,
+                    start_date=request.POST.get('start_date'),
+                    duration_months=int(request.POST.get('duration_months')),
+                    monthly_rate=Decimal(request.POST.get('monthly_rate'))
+                )
+                
+                return JsonResponse({
+                    'success': True,
+                    'message': 'Stall and contract created successfully',
+                    'redirect_url': reverse('manage_contracts')
+                })
+                
         except Exception as e:
-            context = {
-                "success": False,
-                "message": f"Error: {str(e)}",
-                "stalls": Stall.objects.all(),
-                "super_admin": request.user
-            }
-            return render(request, "TriadApp/superadmin/add_stall.html", context)
-
-    # Regular GET request
-    return render(request, "TriadApp/superadmin/add_stall.html", {
-        "stalls": Stall.objects.all(),
-        "super_admin": request.user
-    })
+            print(f"Error creating stall: {str(e)}")
+            return JsonResponse({
+                'success': False,
+                'message': f"Error: {str(e)}"
+            })
+    
+    # Add stalls to context without ordering by created_at
+    stalls = Stall.objects.all()
+    context = {
+        'current_date': timezone.now().date(),
+        'super_admin': request.user,
+        'stalls': stalls
+    }
+    return render(request, 'TriadApp/superadmin/add_stall.html', context)
 
 
 
@@ -405,5 +414,221 @@ def delete_admin(request, admin_id):
         'success': False,
         'message': 'Invalid request method'
     })
+
+@superuser_required
+def stall_contract(request, store_id):
+    stall = get_object_or_404(Stall, store_id=store_id)
+    contracts = StallContract.objects.filter(stall=stall).prefetch_related('payments')
+    
+    # Get the latest/active contract
+    current_contract = contracts.first() if contracts.exists() else None
+    
+    # Calculate payment statistics if there's an active contract
+    if current_contract:
+        payments = current_contract.payments.all().order_by('-payment_date')
+        total_amount = current_contract.monthly_rate * current_contract.duration_months
+        total_paid = sum(payment.amount_paid for payment in payments)
+        remaining_balance = total_amount - total_paid
+    else:
+        payments = []
+        total_amount = total_paid = remaining_balance = 0
+    
+    context = {
+        'stall': stall,
+        'contract': current_contract,
+        'payments': payments,
+        'total_amount': total_amount,
+        'total_paid': total_paid,
+        'remaining_balance': remaining_balance,
+        'current_date': timezone.now().date(),
+        'super_admin': request.user
+    }
+    return render(request, 'TriadApp/superadmin/stall_contract.html', context)
+
+@superuser_required
+def add_stall_payment(request, store_id, contract_id):
+    if request.method == 'POST':
+        try:
+            stall = get_object_or_404(Stall, store_id=store_id)
+            contract = get_object_or_404(StallContract, id=contract_id, stall=stall)
+            
+            payment_date = request.POST.get('payment_date')
+            amount = request.POST.get('amount')
+            payment_method = request.POST.get('payment_method')
+            payment_for_month = request.POST.get('payment_for_month')
+            notes = request.POST.get('notes')
+            
+            payment = StallPayment.objects.create(
+                contract=contract,
+                payment_date=payment_date,
+                amount_paid=amount,
+                payment_method=payment_method,
+                payment_for_month=payment_for_month,
+                notes=notes
+            )
+            
+            return JsonResponse({
+                'status': 'success',
+                'message': 'Payment recorded successfully',
+                'receipt_number': payment.receipt_number
+            })
+            
+        except Exception as e:
+            return JsonResponse({
+                'status': 'error',
+                'message': str(e)
+            })
+    
+    return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
+
+@superuser_required
+def manage_contracts(request):
+    # Get all contracts with their stalls and payments
+    contracts = StallContract.objects.all().select_related('stall').prefetch_related('payments')
+    # Get active stalls without contracts for the dropdown
+    stalls = Stall.objects.filter(is_active=True).exclude(
+        id__in=StallContract.objects.filter(
+            end_date__gte=timezone.now().date()
+        ).values('stall_id')
+    )
+    
+    context = {
+        'contracts': contracts,
+        'stalls': stalls,
+        'current_date': timezone.now().date(),
+        'super_admin': request.user
+    }
+    return render(request, 'TriadApp/superadmin/contracts.html', context)
+
+@superuser_required
+def add_stall_contract(request):
+    if request.method == 'POST':
+        try:
+            stall_id = request.POST.get('stall')
+            stall = get_object_or_404(Stall, store_id=stall_id)
+            
+            # Check if stall already has an active contract
+            existing_contract = StallContract.objects.filter(
+                stall=stall,
+                end_date__gte=timezone.now().date()
+            ).first()
+            
+            if existing_contract:
+                return JsonResponse({
+                    'status': 'error',
+                    'message': 'This stall already has an active contract'
+                })
+            
+            start_date = request.POST.get('start_date')
+            duration_months = int(request.POST.get('duration_months'))
+            monthly_rate = Decimal(request.POST.get('monthly_rate'))
+            
+            # Validate start date
+            start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+            if start_date < timezone.now().date():
+                return JsonResponse({
+                    'status': 'error',
+                    'message': 'Start date cannot be in the past'
+                })
+            
+            contract = StallContract.objects.create(
+                stall=stall,
+                start_date=start_date,
+                duration_months=duration_months,
+                monthly_rate=monthly_rate
+            )
+            
+            return JsonResponse({
+                'status': 'success',
+                'message': 'Contract created successfully',
+                'redirect_url': reverse('manage_contracts')
+            })
+            
+        except ValueError as e:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Invalid input values'
+            })
+        except Exception as e:
+            return JsonResponse({
+                'status': 'error',
+                'message': str(e)
+            })
+    
+    return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
+
+@superuser_required
+def contract_details(request, contract_id):
+    contract = get_object_or_404(StallContract.objects.select_related('stall'), id=contract_id)
+    payments = contract.payments.all().order_by('-payment_date')
+    
+    total_paid = sum(payment.amount_paid for payment in payments)
+    remaining_balance = contract.total_amount - total_paid
+    
+    context = {
+        'contract': contract,
+        'payments': payments,
+        'total_paid': total_paid,
+        'remaining_balance': remaining_balance,
+        'super_admin': request.user
+    }
+    return render(request, 'TriadApp/superadmin/contract_details.html', context)
+
+@superuser_required
+def add_payment(request, contract_id):
+    if request.method == 'POST':
+        try:
+            contract = get_object_or_404(StallContract, id=contract_id)
+            
+            payment_date = datetime.strptime(request.POST.get('payment_date'), '%Y-%m-%d').date()
+            amount = Decimal(request.POST.get('amount'))
+            payment_method = request.POST.get('payment_method')
+            payment_for_month = datetime.strptime(request.POST.get('payment_for_month'), '%Y-%m').date()
+            notes = request.POST.get('notes', '')
+            
+            # Validate payment date
+            if payment_date > timezone.now().date():
+                return JsonResponse({
+                    'status': 'error',
+                    'message': 'Payment date cannot be in the future'
+                })
+            
+            # Validate payment amount
+            total_paid = sum(p.amount_paid for p in contract.payments.all())
+            remaining_balance = contract.total_amount - total_paid
+            
+            if amount > remaining_balance:
+                return JsonResponse({
+                    'status': 'error',
+                    'message': f'Payment amount exceeds remaining balance (₱{remaining_balance})'
+                })
+            
+            payment = StallPayment.objects.create(
+                contract=contract,
+                payment_date=payment_date,
+                amount_paid=amount,
+                payment_method=payment_method,
+                payment_for_month=payment_for_month,
+                notes=notes
+            )
+            
+            return JsonResponse({
+                'status': 'success',
+                'message': 'Payment recorded successfully',
+                'receipt_number': payment.receipt_number
+            })
+            
+        except ValueError:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Invalid input values'
+            })
+        except Exception as e:
+            return JsonResponse({
+                'status': 'error',
+                'message': str(e)
+            })
+    
+    return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
 
 

@@ -144,3 +144,5 @@ EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'kentrixcapstone@gmail.com'  
 EMAIL_HOST_PASSWORD = 'ikej htfn rzuj jojj'  
+
+LOGIN_URL = 'login'  # This points to your custom login view

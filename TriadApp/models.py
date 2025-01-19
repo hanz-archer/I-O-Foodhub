@@ -10,6 +10,8 @@ import wmi
 import random
 import string
 from django.utils import timezone
+from dateutil.relativedelta import relativedelta
+from datetime import datetime
 
 class Stall(models.Model):
     store_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
@@ -342,5 +344,180 @@ class Employee(models.Model):
         if not self.raw_password and self.password:
             self.raw_password = self.password
         super().save(*args, **kwargs)
+
+class Transaction(models.Model):
+    PAYMENT_CHOICES = [
+        ('cash', 'Cash'),
+        ('gcash', 'GCash'),
+        ('maya', 'Maya')
+    ]
+    
+    transaction_id = models.CharField(max_length=50, unique=True)
+    stall = models.ForeignKey('Stall', on_delete=models.CASCADE)
+    employee = models.ForeignKey('Employee', on_delete=models.CASCADE)
+    payment_method = models.CharField(max_length=20, choices=PAYMENT_CHOICES, default='cash')
+    total_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    date = models.DateField(default=timezone.now)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    def save(self, *args, **kwargs):
+        if not self.transaction_id:
+            prefix = self.stall.name[:3].upper()
+            timestamp = timezone.now().strftime('%y%m%d%H%M')
+            random_suffix = ''.join(random.choices(string.digits, k=4))
+            self.transaction_id = f"TXN-{prefix}-{timestamp}-{random_suffix}"
+        if not self.date:
+            self.date = timezone.now().date()
+        super().save(*args, **kwargs)
+    
+    def __str__(self):
+        return f"{self.transaction_id} - ₱{self.total_amount}"
+
+    class Meta:
+        ordering = ['-date', '-created_at']
+
+class TransactionItem(models.Model):
+    transaction = models.ForeignKey(Transaction, on_delete=models.CASCADE, related_name='items')
+    item = models.ForeignKey('Item', on_delete=models.CASCADE)
+    quantity = models.PositiveIntegerField()
+    unit_price = models.DecimalField(max_digits=10, decimal_places=2)
+    subtotal = models.DecimalField(max_digits=10, decimal_places=2)
+    
+    def save(self, *args, **kwargs):
+        self.subtotal = self.quantity * self.unit_price
+        super().save(*args, **kwargs)
+
+class TransactionItemAddOn(models.Model):
+    transaction_item = models.ForeignKey(TransactionItem, on_delete=models.CASCADE, related_name='add_ons')
+    add_on = models.ForeignKey('ItemAddOn', on_delete=models.CASCADE)
+    quantity = models.PositiveIntegerField()
+    unit_price = models.DecimalField(max_digits=10, decimal_places=2)
+    subtotal = models.DecimalField(max_digits=10, decimal_places=2)
+    
+    def save(self, *args, **kwargs):
+        self.subtotal = self.quantity * self.unit_price
+        super().save(*args, **kwargs)
+
+
+
+
+
+class StallContract(models.Model):
+    PAYMENT_STATUS = [
+        ('paid', 'Paid'),
+        ('pending', 'Pending'),
+        ('overdue', 'Overdue')
+    ]
+    
+    CONTRACT_DURATION = [
+        (6, '6 Months'),
+        (12, '1 Year'),
+        (24, '2 Years'),
+    ]
+    
+    stall = models.ForeignKey(Stall, on_delete=models.CASCADE, related_name='contracts')
+    start_date = models.DateField()
+    end_date = models.DateField()
+    monthly_rate = models.DecimalField(max_digits=10, decimal_places=2)
+    duration_months = models.IntegerField(choices=CONTRACT_DURATION)
+    payment_status = models.CharField(max_length=10, choices=PAYMENT_STATUS, default='pending')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    def save(self, *args, **kwargs):
+        # Calculate end_date based on start_date and duration
+        if not self.end_date:
+            end_date = datetime.strptime(str(self.start_date), '%Y-%m-%d')
+            self.end_date = (end_date + relativedelta(months=self.duration_months)).date()
+        
+        # Update stall status based on payment and end date
+        if self.payment_status == 'paid' and self.end_date >= timezone.now().date():
+            self.stall.is_active = True
+        else:
+            self.stall.is_active = False
+        self.stall.save()
+        
+        super().save(*args, **kwargs)
+    
+    def __str__(self):
+        return f"{self.stall.name} - Contract ({self.start_date} to {self.end_date})"
+    
+    class Meta:
+        ordering = ['-start_date']
+
+    @property
+    def total_amount(self):
+        return self.monthly_rate * self.duration_months
+
+class StallPayment(models.Model):
+    PAYMENT_METHOD = [
+        ('cash', 'Cash'),
+        ('bank', 'Bank Transfer'),
+        ('gcash', 'GCash'),
+        ('maya', 'Maya')
+    ]
+    
+    contract = models.ForeignKey(StallContract, on_delete=models.CASCADE, related_name='payments')
+    payment_date = models.DateField()
+    amount_paid = models.DecimalField(max_digits=10, decimal_places=2)
+    payment_method = models.CharField(max_length=10, choices=PAYMENT_METHOD)
+    payment_for_month = models.DateField()  # The month this payment is for
+    receipt_number = models.CharField(max_length=50, unique=True)
+    notes = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    def update_contract_status(self):
+        contract = self.contract
+        current_date = timezone.now().date()
+        
+        # Get all payments for this contract, including the current one
+        total_paid = contract.payments.aggregate(
+            total=models.Sum('amount_paid'))['total'] or 0
+        if not self.pk:  # If this is a new payment
+            total_paid += self.amount_paid
+            
+        total_expected = contract.monthly_rate * contract.duration_months
+        
+        # Update contract status based on payments and due date
+        if total_paid >= total_expected:
+            contract.payment_status = 'paid'
+        elif contract.end_date < current_date:
+            contract.payment_status = 'overdue'
+        else:
+            contract.payment_status = 'pending'
+        
+        contract.save()
+    
+    def save(self, *args, **kwargs):
+        # Generate receipt number if not provided
+        if not self.receipt_number:
+            prefix = "RCPT"
+            timestamp = timezone.now().strftime('%y%m%d%H%M')
+            random_suffix = ''.join(random.choices(string.digits, k=4))
+            self.receipt_number = f"{prefix}-{timestamp}-{random_suffix}"
+        
+        # Update contract payment status
+        self.update_contract_status()
+        
+        super().save(*args, **kwargs)
+    
+    def __str__(self):
+        return f"Payment for {self.contract.stall.name} - {self.payment_date}"
+    
+    class Meta:
+        ordering = ['-payment_date']
+
+class TransactionReport(models.Model):
+    employee = models.ForeignKey('Employee', on_delete=models.CASCADE, related_name='reports')
+    title = models.CharField(max_length=200)
+    description = models.TextField()
+    file = models.FileField(upload_to='transaction_reports/')
+    submitted_at = models.DateTimeField(auto_now_add=True)
+    
+    def __str__(self):
+        return f"Report by {self.employee.user.username} - {self.submitted_at.date()}"
+    
+    class Meta:
+        ordering = ['-submitted_at']
 
 

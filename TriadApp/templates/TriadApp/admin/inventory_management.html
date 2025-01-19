@@ -79,8 +79,8 @@
                         <td class="px-6 py-4 text-sm text-gray-600">{{ item.quantity }}</td>
                         <td class="px-6 py-4 text-sm text-gray-600">
                             <ul class="list-disc list-inside">
-                                {% for supply in item.supplies.all %}
-                                    <li>{{ supply.name }} ({{ supply.quantity_per_item }} per item)</li>
+                                {% for item_supply in item.item_supplies.all %}
+                                    <li>{{ item_supply.supply.name }} ({{ item_supply.quantity_per_item }} per item)</li>
                                 {% endfor %}
                             </ul>
                         </td>

@@ -1,0 +1,297 @@
+{% extends 'TriadApp/superadmin/super_admin.html' %}
+{% load static %}
+
+{% block content %}
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<div class="container mx-auto px-4 py-8">
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl font-bold">Contract Management</h1>
+        <button onclick="showAddContractModal()" 
+                class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+            Create New Contract
+        </button>
+    </div>
+
+    <!-- Search and Filter -->
+    <div class="mb-6 flex gap-4">
+        <input type="text" id="searchInput" placeholder="Search stalls..." 
+               class="px-4 py-2 border rounded-lg w-64">
+        <select id="statusFilter" class="px-4 py-2 border rounded-lg">
+            <option value="">All Statuses</option>
+            <option value="active">Active</option>
+            <option value="pending">Pending</option>
+            <option value="expired">Expired</option>
+        </select>
+    </div>
+
+    <!-- Contracts Table -->
+    <div class="bg-white shadow-md rounded-lg overflow-hidden">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Stall Name
+                    </th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Contract Period
+                    </th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Monthly Rate
+                    </th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Status
+                    </th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Actions
+                    </th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+                {% for contract in contracts %}
+                <tr>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="text-sm font-medium text-gray-900">{{ contract.stall.name }}</div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="text-sm text-gray-900">
+                            {{ contract.start_date|date:"M d, Y" }} - {{ contract.end_date|date:"M d, Y" }}
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="text-sm text-gray-900">₱{{ contract.monthly_rate }}</div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                            {% if contract.payment_status == 'paid' %}
+                                bg-green-100 text-green-800
+                            {% elif contract.payment_status == 'pending' %}
+                                bg-yellow-100 text-yellow-800
+                            {% else %}
+                                bg-red-100 text-red-800
+                            {% endif %}">
+                            {{ contract.payment_status|title }}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <a href="{% url 'contract_details' contract.id %}" 
+                           class="text-blue-600 hover:text-blue-900 mr-3">View</a>
+                        <button onclick="showPaymentModal('{{ contract.id }}')"
+                                class="text-green-600 hover:text-green-900">Add Payment</button>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="px-6 py-4 text-center text-gray-500">
+                        No contracts found
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Add Contract Modal -->
+<div id="contractModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden overflow-y-auto h-full w-full">
+    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+        <h3 class="text-lg font-medium leading-6 text-gray-900 mb-4">Create New Contract</h3>
+        <form id="contractForm">
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Select Stall</label>
+                    <select name="stall" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                        {% for stall in stalls %}
+                        <option value="{{ stall.store_id }}">{{ stall.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Start Date</label>
+                    <input type="date" name="start_date" required 
+                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Duration</label>
+                    <select name="duration_months" required 
+                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                        <option value="6">6 Months</option>
+                        <option value="12">1 Year</option>
+                        <option value="24">2 Years</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Monthly Rate</label>
+                    <input type="number" name="monthly_rate" required step="0.01"
+                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                </div>
+            </div>
+            <div class="mt-6 flex justify-end gap-3">
+                <button type="button" onclick="closeContractModal()"
+                        class="bg-gray-200 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-300">
+                    Cancel
+                </button>
+                <button type="submit"
+                        class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-700">
+                    Create Contract
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Add Payment Modal -->
+<div id="paymentModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden overflow-y-auto h-full w-full">
+    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+        <h3 class="text-lg font-medium leading-6 text-gray-900 mb-4">Add Payment</h3>
+        <form id="paymentForm">
+            <input type="hidden" id="contractId" name="contract_id">
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Payment Date</label>
+                    <input type="date" name="payment_date" required 
+                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Amount</label>
+                    <input type="number" name="amount" required step="0.01"
+                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Payment Method</label>
+                    <select name="payment_method" required 
+                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                        <option value="cash">Cash</option>
+                        <option value="bank">Bank Transfer</option>
+                        <option value="gcash">GCash</option>
+                        <option value="maya">Maya</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Payment For Month</label>
+                    <input type="month" name="payment_for_month" required 
+                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Notes</label>
+                    <textarea name="notes" rows="2"
+                              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"></textarea>
+                </div>
+            </div>
+            <div class="mt-6 flex justify-end gap-3">
+                <button type="button" onclick="closePaymentModal()"
+                        class="bg-gray-200 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-300">
+                    Cancel
+                </button>
+                <button type="submit"
+                        class="bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-700">
+                    Submit Payment
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+// Modal Functions
+function showAddContractModal() {
+    document.getElementById('contractModal').classList.remove('hidden');
+}
+
+function closeContractModal() {
+    document.getElementById('contractModal').classList.add('hidden');
+}
+
+function showPaymentModal(contractId) {
+    document.getElementById('contractId').value = contractId;
+    document.getElementById('paymentModal').classList.remove('hidden');
+}
+
+function closePaymentModal() {
+    document.getElementById('paymentModal').classList.add('hidden');
+}
+
+// Form Submissions
+document.getElementById('contractForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+    
+    fetch('{% url "add_stall_contract" %}', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            Swal.fire({
+                icon: 'success',
+                title: 'Success!',
+                text: data.message
+            }).then(() => {
+                location.reload();
+            });
+        } else {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error!',
+                text: data.message
+            });
+        }
+    });
+});
+
+document.getElementById('paymentForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+    const contractId = document.getElementById('contractId').value;
+    
+    fetch(`{% url 'add_payment' 0 %}`.replace('0', contractId), {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            Swal.fire({
+                icon: 'success',
+                title: 'Success!',
+                text: data.message
+            }).then(() => {
+                location.reload();
+            });
+        } else {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error!',
+                text: data.message
+            });
+        }
+    });
+});
+
+// Search and Filter
+document.getElementById('searchInput').addEventListener('input', filterTable);
+document.getElementById('statusFilter').addEventListener('change', filterTable);
+
+function filterTable() {
+    const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+    const statusFilter = document.getElementById('statusFilter').value.toLowerCase();
+    const rows = document.querySelectorAll('tbody tr');
+
+    rows.forEach(row => {
+        const stallName = row.querySelector('td:first-child').textContent.toLowerCase();
+        const status = row.querySelector('td:nth-child(4)').textContent.toLowerCase();
+        
+        const matchesSearch = stallName.includes(searchTerm);
+        const matchesStatus = !statusFilter || status.includes(statusFilter);
+        
+        row.style.display = matchesSearch && matchesStatus ? '' : 'none';
+    });
+}
+</script>
+{% endblock %} 

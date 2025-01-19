@@ -66,6 +66,39 @@ def admin_dashboard(request):
 
 
 
+@employee_login_required  # Replace @login_required with this
+def employee_dashboard(request):
+    employee_id = request.session.get('employee_id')
+    is_employee = request.session.get('is_employee', False)
+    
+    if not employee_id or not is_employee:
+        request.session.flush()
+        return redirect('login')
+    
+    try:
+        employee = Employee.objects.get(id=employee_id)
+        
+        # Check if employee is active
+        if not employee.is_active:
+            request.session.flush()
+            messages.error(request, 'Your account has been deactivated. Please contact your administrator.')
+            return redirect('login')
+        
+        # Check if stall is active
+        if not employee.stall.is_active:
+            request.session.flush()
+            messages.error(request, 'Your stall is currently inactive. Please contact your administrator.')
+            return redirect('login')
+        
+        context = {
+            'employee': employee,
+            'stall': employee.stall,
+        }
+        return render(request, 'TriadApp/employee/employee.html', context)
+    except Employee.DoesNotExist:
+        request.session.flush()
+        return redirect('login')
+
 @csrf_exempt
 def login_view(request):
     if request.method == 'POST':
@@ -166,6 +199,18 @@ def login_view(request):
                             'success': False,
                             'message': 'Your account has been deactivated. Please contact your administrator.'
                         })
+                    
+                    # Check if stall is active
+                    if not employee.stall.is_active:
+                        login_history.status = 'failed'
+                        login_history.save()
+                        return JsonResponse({
+                            'success': False,
+                            'message': 'Your stall is currently inactive. Please contact your administrator.'
+                        })
+                    
+                    # Check if stall's contract is expired
+                   
                     
                     request.session['employee_id'] = employee.id
                     request.session['is_employee'] = True
@@ -539,32 +584,3 @@ def increment_login_attempts(ip):
 def reset_login_attempts(ip):
     cache.delete(f'login_attempts_{ip}')
     cache.delete(f'last_attempt_{ip}')
-
-@login_required
-def employee_dashboard(request):
-    employee_id = request.session.get('employee_id')
-    is_employee = request.session.get('is_employee', False)
-    
-    if not employee_id or not is_employee:
-        request.session.flush()
-        return redirect('login')
-    
-    try:
-        employee = Employee.objects.get(id=employee_id)
-        
-        # Check if employee is active
-        if not employee.is_active:
-            request.session.flush()
-            messages.error(request, 'Your account has been deactivated. Please contact your administrator.')
-            return redirect('login')
-        
-        context = {
-            'employee': employee,
-            'stall': employee.stall,
-        }
-        return render(request, 'TriadApp/employee/employee.html', context)
-    except Employee.DoesNotExist:
-        request.session.flush()
-        return redirect('login')
-
-

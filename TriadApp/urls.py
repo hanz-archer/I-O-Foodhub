@@ -1,5 +1,5 @@
 from django.urls import path
-from . import super_admin, views, stall_admins
+from . import super_admin, views, stall_admins, employee
 
 
 urlpatterns = [
@@ -60,11 +60,35 @@ urlpatterns = [
     path('send-contact/', views.send_contact, name='send_contact'),
 
     path('employee/dashboard/', views.employee_dashboard, name='employee_dashboard'),
+    path('employee/pos/', employee.employee_pos, name='employee_pos'),
+    path('employee/process-order/', employee.process_order, name='process_order'),
+    path('employee/get-addons/<str:item_id>/', employee.get_item_addons, name='get_item_addons'),
 
-  
+    path('employee/transactions/', 
+         employee.transaction_history, 
+         name='employee_transactions'),
+
+    path('employee/submit-report/',employee.submit_report, name='submit_report'),
+    path('employee/download-transactions/', 
+         employee.download_and_report_transactions, 
+         name='download_transactions'),
+
+    path('superadmin/contracts/', super_admin.manage_contracts,name='manage_contracts'),
 
 
 
- 
+
+    path('superadmin/contracts/add/', 
+         super_admin.add_stall_contract, 
+         name='add_stall_contract'),
+
+    path('superadmin/contracts/<int:contract_id>/', 
+         super_admin.contract_details, 
+         name='contract_details'),
+
+    path('superadmin/contracts/<int:contract_id>/payment/', 
+         super_admin.add_payment, 
+         name='add_payment'),
+
 ]
         

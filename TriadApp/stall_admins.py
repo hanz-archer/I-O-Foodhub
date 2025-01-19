@@ -1,11 +1,9 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
-from .models import AdminProfile, CustomUser
+from .models import AdminProfile, CustomUser, Supplier, Supply
 from django.contrib.auth.hashers import check_password
 from .decorators import admin_required
 from .forms import SupplierForm
-from .models import Supplier
-from .models import Supplier, Supply, AdminProfile
 from django.http import JsonResponse
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
@@ -17,8 +15,7 @@ from django.db.models import Q
 from django.utils import timezone
 from datetime import datetime, date
 from django.views.decorators.http import require_http_methods
-from .models import Category
-from .models import Item, ItemAddOn, ItemSupply, Employee
+from .models import Category, Item, ItemAddOn, ItemSupply, Employee
 from decimal import Decimal, InvalidOperation
 import json
 import random
@@ -111,6 +108,14 @@ def add_employee(request):
                 with transaction.atomic():
                     admin = AdminProfile.objects.get(id=request.session.get('admin_id'))
                     
+                    # Check if stall already has two employees
+                    current_employee_count = Employee.objects.filter(stall=admin.stall, is_active=True).count()
+                    if current_employee_count >= 2:
+                        return JsonResponse({
+                            'status': 'error',
+                            'message': 'Maximum number of employees (2) reached for this stall.'
+                        })
+                    
                     # Get form data
                     data = {
                         'firstname': request.POST.get('firstname'),
@@ -125,6 +130,52 @@ def add_employee(request):
                         'username': request.POST.get('username'),
                         'password': request.POST.get('password')
                     }
+                    
+                    # Validate username uniqueness across all user types
+                    username = data['username']
+                    email = data['email']
+                    
+                    # Check if email is provided (since it's optional)
+                    if email:
+                        # Check CustomUser (Superadmin)
+                        if CustomUser.objects.filter(email=email).exists():
+                            return JsonResponse({
+                                'status': 'error',
+                                'message': 'Email already exists in the system.'
+                            })
+                        
+                        # Check AdminProfile
+                        if AdminProfile.objects.filter(email=email).exists():
+                            return JsonResponse({
+                                'status': 'error',
+                                'message': 'Email already exists in the system.'
+                            })
+                        
+                        # Check Employee
+                        if Employee.objects.filter(email=email).exists():
+                            return JsonResponse({
+                                'status': 'error',
+                                'message': 'Email already exists in the system.'
+                            })
+                    
+                    # Check username across all user types
+                    if CustomUser.objects.filter(username=username).exists():
+                        return JsonResponse({
+                            'status': 'error',
+                            'message': 'Username already exists in the system.'
+                        })
+                    
+                    if AdminProfile.objects.filter(username=username).exists():
+                        return JsonResponse({
+                            'status': 'error',
+                            'message': 'Username already exists in the system.'
+                        })
+                    
+                    if Employee.objects.filter(username=username).exists():
+                        return JsonResponse({
+                            'status': 'error',
+                            'message': 'Username already exists in the system.'
+                        })
                     
                     # Validate required fields
                     required_fields = ['firstname', 'lastname', 'birthdate', 
@@ -148,13 +199,6 @@ def add_employee(request):
                         return JsonResponse({
                             'status': 'error',
                             'message': 'Employee must be at least 15 years old.'
-                        })
-                    
-                    # Check if username already exists
-                    if Employee.objects.filter(username=data['username']).exists():
-                        return JsonResponse({
-                            'status': 'error',
-                            'message': 'Username already exists.'
                         })
                     
                     # Hash password
@@ -223,7 +267,6 @@ def edit_employee(request, employee_id):
         if request.method == 'POST':
             try:
                 with transaction.atomic():
-                    # Get form data
                     data = {
                         'firstname': request.POST.get('firstname'),
                         'middle_initial': request.POST.get('middle_initial'),
@@ -239,10 +282,68 @@ def edit_employee(request, employee_id):
                         'is_active': request.POST.get('is_active') == 'true'
                     }
                     
+                    # If activating an employee, check stall employee limit
+                    if data['is_active'] and not employee.is_active:
+                        current_active_employees = Employee.objects.filter(
+                            stall=admin.stall, 
+                            is_active=True
+                        ).exclude(id=employee.id).count()
+                        
+                        if current_active_employees >= 2:
+                            return JsonResponse({
+                                'status': 'error',
+                                'message': 'Cannot activate employee. Maximum number of active employees (2) reached for this stall.'
+                            })
+                    
+                    # Check email uniqueness if changed and provided
+                    if data['email'] and data['email'] != employee.email:
+                        # Check CustomUser (Superadmin)
+                        if CustomUser.objects.filter(email=data['email']).exists():
+                            return JsonResponse({
+                                'status': 'error',
+                                'message': 'Email already exists in the system.'
+                            })
+                        
+                        # Check AdminProfile
+                        if AdminProfile.objects.filter(email=data['email']).exists():
+                            return JsonResponse({
+                                'status': 'error',
+                                'message': 'Email already exists in the system.'
+                            })
+                        
+                        # Check other Employees
+                        if Employee.objects.filter(email=data['email']).exclude(id=employee.id).exists():
+                            return JsonResponse({
+                                'status': 'error',
+                                'message': 'Email already exists in the system.'
+                            })
+                    
+                    # Check username uniqueness if changed
+                    if data['username'] != employee.username:
+                        # Check CustomUser (Superadmin)
+                        if CustomUser.objects.filter(username=data['username']).exists():
+                            return JsonResponse({
+                                'status': 'error',
+                                'message': 'Username already exists in the system.'
+                            })
+                        
+                        # Check AdminProfile
+                        if AdminProfile.objects.filter(username=data['username']).exists():
+                            return JsonResponse({
+                                'status': 'error',
+                                'message': 'Username already exists in the system.'
+                            })
+                        
+                        # Check other Employees
+                        if Employee.objects.filter(username=data['username']).exclude(id=employee.id).exists():
+                            return JsonResponse({
+                                'status': 'error',
+                                'message': 'Username already exists in the system.'
+                            })
+                    
                     # Validate required fields
                     required_fields = ['firstname', 'lastname', 'birthdate', 
-                                    'address', 'contact_number', 'position', 
-                                    'username']
+                                    'address', 'contact_number', 'position']
                     
                     if not all(data[field] for field in required_fields):
                         return JsonResponse({
@@ -261,13 +362,6 @@ def edit_employee(request, employee_id):
                         return JsonResponse({
                             'status': 'error',
                             'message': 'Employee must be at least 15 years old.'
-                        })
-                    
-                    # Check username uniqueness if changed
-                    if data['username'] != employee.username and Employee.objects.filter(username=data['username']).exists():
-                        return JsonResponse({
-                            'status': 'error',
-                            'message': 'Username already exists.'
                         })
                     
                     # Update employee data
@@ -903,19 +997,14 @@ def manage_inventory(request):
     try:
         admin = AdminProfile.objects.get(id=request.session.get('admin_id'))
         
-        # Handle AJAX request first
-        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            if request.method == 'POST':
-                return add_item(request)
-        
-        # Get search parameters
-        search_query = request.GET.get('search', '').strip()
-        category_filter = request.GET.get('category', '').strip()
-        
-        # Base queryset
-        items = Item.objects.filter(stall=admin.stall)
+        # Base queryset with prefetch_related
+        items = Item.objects.filter(stall=admin.stall).prefetch_related(
+            'item_supplies',
+            'item_supplies__supply'
+        )
         
         # Apply search if provided
+        search_query = request.GET.get('search', '').strip()
         if search_query:
             items = items.filter(
                 Q(item_id__icontains=search_query) |
@@ -924,6 +1013,7 @@ def manage_inventory(request):
             )
         
         # Apply category filter if provided
+        category_filter = request.GET.get('category', '').strip()
         if category_filter:
             items = items.filter(category__name=category_filter)
         
@@ -1122,8 +1212,8 @@ def edit_item(request, item_id):
                 admin = AdminProfile.objects.get(id=request.session.get('admin_id'))
                 item = get_object_or_404(Item, id=item_id, stall=admin.stall)
                 
-                # Get form data
-                name = request.POST.get('name')
+                # Get form data for item
+                item_name = request.POST.get('name')  # Changed variable name to item_name
                 category_id = request.POST.get('category')
                 price = request.POST.get('price')
                 new_quantity = request.POST.get('quantity', 0)
@@ -1156,52 +1246,49 @@ def edit_item(request, item_id):
                                                      id=supply_id, 
                                                      stall=admin.stall)
                             
-                            # Check if enough supply quantity is available
                             if total_qty_needed > supply.quantity:
                                 raise ValidationError(
                                     f"Insufficient quantity for supply {supply.name} ({supply.supply_id}). "
                                     f"Need {total_qty_needed} but only {supply.quantity} available."
                                 )
                             
-                            # Create the ItemSupply relationship
                             ItemSupply.objects.create(
                                 item=item,
                                 supply=supply,
                                 quantity_per_item=per_item_qty
                             )
                             
-                            # Update supply quantity
                             supply.quantity -= total_qty_needed
                             supply.save()
                             
                         except (ValueError, InvalidOperation):
                             raise ValidationError(f"Invalid quantity value for supply {supply.name}")
                 
-                # Handle add-ons
+                # Handle add-ons separately
                 addon_names = request.POST.getlist('addon_names[]')
                 addon_prices = request.POST.getlist('addon_prices[]')
                 
                 # Clear existing add-ons
                 item.add_ons.all().delete()
                 
-                # Add new add-ons
-                for name, price in zip(addon_names, addon_prices):
-                    if name and price:
+                # Add new add-ons with their own names
+                for addon_name, addon_price in zip(addon_names, addon_prices):
+                    if addon_name and addon_price:
                         try:
-                            addon_price = Decimal(str(price))
-                            if addon_price <= 0:
-                                raise ValidationError(f"Add-on price must be greater than 0 for {name}")
+                            addon_price_decimal = Decimal(str(addon_price))
+                            if addon_price_decimal <= 0:
+                                raise ValidationError(f"Add-on price must be greater than 0 for {addon_name}")
                             
                             ItemAddOn.objects.create(
                                 item=item,
-                                name=name,
-                                price=addon_price
+                                name=addon_name,
+                                price=addon_price_decimal
                             )
                         except (ValueError, InvalidOperation):
-                            raise ValidationError(f"Invalid price value for add-on {name}")
+                            raise ValidationError(f"Invalid price value for add-on {addon_name}")
                 
-                # Update item basic info
-                item.name = name
+                # Update item basic info separately from add-ons
+                item.name = item_name  # Use the correct variable name
                 item.category = category
                 item.price = price
                 item.quantity = new_quantity
@@ -1228,7 +1315,7 @@ def edit_item(request, item_id):
                 'message': str(e)
             })
     
-    # GET request - return item data for editing
+    # GET request remains the same
     try:
         admin = AdminProfile.objects.get(id=request.session.get('admin_id'))
         item = get_object_or_404(Item, id=item_id, stall=admin.stall)
@@ -1265,4 +1352,3 @@ def edit_item(request, item_id):
             'message': str(e)
         })
     
-

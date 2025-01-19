@@ -38,3 +38,13 @@ def admin_required(view_func):
         # If both checks pass, allow access to the view
         return view_func(request, *args, **kwargs)
     return _wrapped_view
+
+
+
+def employee_login_required(view_func):
+    @wraps(view_func)
+    def wrapper(request, *args, **kwargs):
+        if not request.session.get('is_employee'):
+            return redirect('login')
+        return view_func(request, *args, **kwargs)
+    return wrapper

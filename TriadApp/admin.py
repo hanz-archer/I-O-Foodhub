@@ -1,9 +1,12 @@
 from django.contrib import admin
 from django.contrib.auth.hashers import make_password
+from django.db.models import Sum
 from .models import (
     Stall, AdminProfile, CustomUser, Supplier, Supply,
-    Item, ItemAddOn, ItemSupply, Category, LoginHistory, Employee
+    Item, ItemAddOn, ItemSupply, Category, LoginHistory, Employee,
+    Transaction, TransactionItem, TransactionItemAddOn, StallContract, StallPayment
 )
+from django.utils import timezone
 
 @admin.register(Stall)
 class StallAdmin(admin.ModelAdmin):
@@ -245,4 +248,144 @@ class EmployeeAdmin(admin.ModelAdmin):
     def get_readonly_fields(self, request, obj=None):
         if obj:  # editing an existing object
             return self.readonly_fields
+    
+    
+    
         return ('date_hired', 'age')
+
+class TransactionItemAddOnInline(admin.TabularInline):
+    model = TransactionItemAddOn
+    extra = 0
+    readonly_fields = ('subtotal',)
+    fields = ('add_on', 'quantity', 'unit_price', 'subtotal')
+    can_delete = False
+
+class TransactionItemInline(admin.TabularInline):
+    model = TransactionItem
+    extra = 0
+    readonly_fields = ('subtotal',)
+    fields = ('item', 'quantity', 'unit_price', 'subtotal')
+    can_delete = False
+
+@admin.register(Transaction)
+class TransactionAdmin(admin.ModelAdmin):
+    list_display = ('transaction_id', 'stall', 'employee', 'get_items_display', 
+                   'payment_method', 'total_amount', 'date', 'created_at')
+    list_filter = ('stall', 'payment_method', 'date', 'created_at', 'employee')
+    search_fields = ('transaction_id', 'stall__name', 'employee__user__username', 
+                    'items__item__name')
+    readonly_fields = ('transaction_id', 'created_at', 'get_items_detail')
+    inlines = [TransactionItemInline]
+    
+    fieldsets = (
+        ('Transaction Information', {
+            'fields': ('transaction_id', 'stall', 'employee', 'date')
+        }),
+        ('Items Information', {
+            'fields': ('get_items_detail',)
+        }),
+        ('Payment Details', {
+            'fields': ('payment_method', 'total_amount')
+        }),
+        ('Timestamps', {
+            'fields': ('created_at',)
+        }),
+    )
+
+    def get_items_display(self, obj):
+        items = obj.items.all()
+        return ", ".join([f"{item.item.name} (x{item.quantity})" for item in items])
+    get_items_display.short_description = 'Items'
+
+    def get_items_detail(self, obj):
+        items = obj.items.all()
+        details = []
+        for item in items:
+            # Calculate item total including add-ons
+            item_total = item.subtotal
+            item_detail = f"• {item.item.name}\n"
+            item_detail += f"  Quantity: {item.quantity}\n"
+            item_detail += f"  Unit Price: ₱{item.unit_price}\n"
+            
+            # Add add-ons if any
+            addons = item.add_ons.all()
+            if addons:
+                item_detail += "  Add-ons:\n"
+                for addon in addons:
+                    item_detail += f"    - {addon.add_on.name} x{addon.quantity} @ ₱{addon.unit_price} = ₱{addon.subtotal}\n"
+                    item_total += addon.subtotal
+            
+            item_detail += f"  Total: ₱{item_total}\n"
+            details.append(item_detail)
+        
+        return "\n".join(details)
+    get_items_detail.short_description = 'Items Detail'
+    
+    def get_readonly_fields(self, request, obj=None):
+        if obj:  # Editing an existing object
+            return self.readonly_fields + ('stall', 'employee', 'total_amount', 'date')
+        return self.readonly_fields
+
+@admin.register(TransactionItem)
+class TransactionItemAdmin(admin.ModelAdmin):
+    list_display = ('transaction', 'item', 'quantity', 'unit_price', 'subtotal')
+    list_filter = ('transaction__stall', 'item__category')
+    search_fields = ('transaction__transaction_id', 'item__name')
+    readonly_fields = ('subtotal',)
+    inlines = [TransactionItemAddOnInline]
+
+@admin.register(TransactionItemAddOn)
+class TransactionItemAddOnAdmin(admin.ModelAdmin):
+    list_display = ('transaction_item', 'add_on', 'quantity', 'unit_price', 'subtotal')
+    list_filter = ('transaction_item__transaction__stall',)
+    search_fields = ('transaction_item__transaction__transaction_id', 'add_on__name')
+    readonly_fields = ('subtotal',)
+    
+    fieldsets = (
+        ('Transaction Item Information', {
+            'fields': ('transaction_item',)
+        }),
+        ('Add-on Details', {
+            'fields': ('add_on', 'quantity', 'unit_price', 'subtotal')
+        }),
+    )
+
+    def get_readonly_fields(self, request, obj=None):
+        if obj:  # Editing an existing object
+            return self.readonly_fields + ('transaction_item', 'add_on', 'unit_price')
+        return self.readonly_fields
+
+class StallPaymentInline(admin.TabularInline):
+    model = StallPayment
+    extra = 0
+    readonly_fields = ('receipt_number', 'created_at')
+
+@admin.register(StallContract)
+class StallContractAdmin(admin.ModelAdmin):
+    list_display = ('stall', 'start_date', 'end_date', 'monthly_rate', 
+                   'payment_status', 'get_total_paid', 'is_active')
+    list_filter = ('payment_status', 'duration_months', 'start_date')
+    search_fields = ('stall__name',)
+    inlines = [StallPaymentInline]
+    
+    def get_total_paid(self, obj):
+        return sum(payment.amount_paid for payment in obj.payments.all())
+    get_total_paid.short_description = 'Total Paid'
+    
+    def is_active(self, obj):
+        return obj.end_date >= timezone.now().date() and obj.payment_status == 'paid'
+    is_active.boolean = True
+    is_active.short_description = 'Active'
+
+@admin.register(StallPayment)
+class StallPaymentAdmin(admin.ModelAdmin):
+    list_display = ('receipt_number', 'contract', 'payment_date', 
+                   'amount_paid', 'payment_method', 'payment_for_month')
+    list_filter = ('payment_method', 'payment_date', 'contract__stall')
+    search_fields = ('receipt_number', 'contract__stall__name')
+    readonly_fields = ('receipt_number', 'created_at')
+    
+
+
+
+    
