@@ -6,6 +6,7 @@
     <title>Employee Dashboard - {{ stall.name }}</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
 </head>
 <body class="bg-gray-100">
     <div class="flex h-screen bg-gray-100">
@@ -102,6 +103,70 @@
         <!-- Main Content -->
         <div class="flex-1 flex flex-col overflow-hidden">
             {% block content %}
+            <div class="p-6">
+                <h1 class="text-3xl font-bold text-gray-800 mb-8 text-center">{{ stall.name }} - Employee Dashboard</h1>
+                
+                <!-- Today's Sales Card -->
+                <div class="bg-white p-6 rounded-lg shadow-lg mb-6 max-w-4xl mx-auto">
+                    <h2 class="text-xl font-semibold mb-4">Today's Sales</h2>
+                    <p class="text-3xl font-bold text-green-600">₱{{ today_sales|floatformat:2 }}</p>
+                </div>
+
+                <!-- Weekly Sales Chart -->
+                <div class="bg-white p-6 rounded-lg shadow-lg max-w-4xl mx-auto">
+                    <h2 class="text-xl font-semibold mb-4">My Weekly Sales</h2>
+                    <div id="weeklyChart"></div>
+                </div>
+            </div>
+
+            <!-- Add charts initialization script -->
+            <script>
+                try {
+                    // Parse the JSON data
+                    const weeklyData = JSON.parse('{{ weekly_data|escapejs }}');
+                    const weeklyLabels = JSON.parse('{{ weekly_labels|escapejs }}');
+
+                    // Weekly Sales Chart
+                    const weeklyOptions = {
+                        series: weeklyData,
+                        chart: {
+                            type: 'bar',
+                            height: 350
+                        },
+                        plotOptions: {
+                            bar: {
+                                horizontal: false,
+                                columnWidth: '55%',
+                                endingShape: 'rounded'
+                            },
+                        },
+                        colors: ['#10B981'], // Green color for the bars
+                        xaxis: {
+                            categories: weeklyLabels,
+                        },
+                        yaxis: {
+                            title: {
+                                text: 'Sales (₱)'
+                            }
+                        },
+                        fill: {
+                            opacity: 1
+                        },
+                        title: {
+                            text: 'This Week\'s Sales Performance',
+                            align: 'left'
+                        }
+                    };
+
+                    // Render the chart
+                    if (weeklyData.length > 0) {
+                        const weeklyChart = new ApexCharts(document.querySelector("#weeklyChart"), weeklyOptions);
+                        weeklyChart.render();
+                    }
+                } catch (error) {
+                    console.error('Error initializing charts:', error);
+                }
+            </script>
             {% endblock %}
         </div>
     </div>

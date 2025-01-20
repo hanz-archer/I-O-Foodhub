@@ -47,7 +47,7 @@ def employee_pos(request):
     except Employee.DoesNotExist:
         return redirect('login')
     
-@csrf_exempt  # Add this decorator for testing
+@csrf_exempt
 @employee_login_required
 def process_order(request):
     if request.method != 'POST':
@@ -57,7 +57,7 @@ def process_order(request):
         data = json.loads(request.body)
         cart_items = data.get('items', [])
         payment_method = data.get('payment_method', 'cash')
-        date = data.get('date', timezone.now().date().isoformat())  # Get date from request or use today
+        date = data.get('date', timezone.now().date().isoformat())
         
         if not cart_items:
             return JsonResponse({'status': 'error', 'message': 'Cart is empty'})
@@ -68,7 +68,11 @@ def process_order(request):
             # Calculate total amount
             total_amount = Decimal('0.00')
             for item in cart_items:
-                item_obj = Item.objects.get(item_id=item['id'])
+                # Get item specific to this stall
+                item_obj = Item.objects.get(
+                    item_id=item['id'],
+                    stall=employee.stall  # Add stall filter
+                )
                 quantity = item['quantity']
                 
                 # Check stock availability
@@ -82,23 +86,29 @@ def process_order(request):
                 item_total = item_obj.price * quantity
                 if 'addOns' in item:
                     for add_on in item['addOns']:
-                        add_on_obj = ItemAddOn.objects.get(id=add_on['id'])
+                        add_on_obj = ItemAddOn.objects.get(
+                            id=add_on['id'],
+                            item=item_obj  # Add item filter for add-ons
+                        )
                         item_total += add_on_obj.price * add_on['quantity']
                 
                 total_amount += item_total
             
-            # Create transaction record with date
+            # Create transaction record
             transaction_obj = Transaction.objects.create(
                 stall=employee.stall,
                 employee=employee,
                 payment_method=payment_method,
                 total_amount=total_amount,
-                date=date  # Add the date field
+                date=date
             )
             
             # Process items and update inventory
             for item in cart_items:
-                item_obj = Item.objects.get(item_id=item['id'])
+                item_obj = Item.objects.get(
+                    item_id=item['id'],
+                    stall=employee.stall  # Add stall filter here too
+                )
                 quantity = item['quantity']
                 
                 # Create transaction item
@@ -113,7 +123,10 @@ def process_order(request):
                 # Process add-ons if any
                 if 'addOns' in item:
                     for add_on in item['addOns']:
-                        add_on_obj = ItemAddOn.objects.get(id=add_on['id'])
+                        add_on_obj = ItemAddOn.objects.get(
+                            id=add_on['id'],
+                            item=item_obj  # Add item filter for add-ons
+                        )
                         TransactionItemAddOn.objects.create(
                             transaction_item=transaction_item,
                             add_on=add_on_obj,
@@ -132,6 +145,16 @@ def process_order(request):
                 'transaction_id': transaction_obj.transaction_id
             })
             
+    except Item.DoesNotExist:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Item not found or does not belong to your stall'
+        })
+    except ItemAddOn.DoesNotExist:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Add-on not found or does not belong to the item'
+        })
     except Exception as e:
         print(f"Error processing order: {str(e)}")
         return JsonResponse({'status': 'error', 'message': str(e)})
@@ -139,33 +162,55 @@ def process_order(request):
 @employee_login_required
 def get_item_addons(request, item_id):
     try:
-        item = Item.objects.get(item_id=item_id)
-        addons = item.add_ons.all()
+        employee = Employee.objects.get(id=request.session.get('employee_id'))
+        item = Item.objects.get(item_id=item_id, stall=employee.stall)
+        addons = ItemAddOn.objects.filter(item=item)
+        
         addon_list = [{
             'id': addon.id,
             'name': addon.name,
             'price': float(addon.price)
         } for addon in addons]
-        return JsonResponse(addon_list, safe=False)
+        
+        return JsonResponse({
+            'status': 'success',
+            'addons': addon_list
+        })
+        
     except Item.DoesNotExist:
-        return JsonResponse([], safe=False)
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Item not found',
+            'addons': []
+        })
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e),
+            'addons': []
+        })
 
 @employee_login_required
 def transaction_history(request):
-    
     employee = Employee.objects.get(id=request.session.get('employee_id'))
     transaction_items = TransactionItem.objects.filter(
         transaction__stall=employee.stall
     ).select_related(
         'transaction',
         'item'
+    ).prefetch_related(
+        'add_ons',
+        'add_ons__add_on'
     ).order_by('-transaction__date', '-transaction__created_at')
+
+    # Calculate add-ons total for each transaction item
+    for item in transaction_items:
+        item.addons_total = sum(addon.subtotal for addon in item.add_ons.all())
 
     context = {
         'transaction_items': transaction_items,
-         'employee': employee,
-            'stall': employee.stall,
-          
+        'employee': employee,
+        'stall': employee.stall,
     }
     return render(request, 'TriadApp/employee/transaction.html', context)
 

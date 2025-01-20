@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Panel - Inventory</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.16/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
 </head>
 
 <body class="bg-gray-100">
@@ -110,6 +111,131 @@
         <!-- Main Content -->
         <div class="flex-1 min-h-screen">
             {% block content %}
+            <div class="p-6">
+                <h1 class="text-3xl font-bold text-gray-800 mb-8 text-center">{{ stall.name }} Sales Dashboard</h1>
+                
+                <!-- Charts Grid -->
+                <div class="grid grid-cols-1 gap-6 max-w-4xl mx-auto">
+                    <!-- Weekly Sales Chart -->
+                    <div class="bg-white p-6 rounded-lg shadow-lg">
+                        <h2 class="text-xl font-semibold mb-4">Weekly Sales</h2>
+                        <div id="weeklyChart"></div>
+                    </div>
+
+                    <!-- Monthly Sales Chart -->
+                    <div class="bg-white p-6 rounded-lg shadow-lg">
+                        <h2 class="text-xl font-semibold mb-4">Monthly Sales</h2>
+                        <div id="monthlyChart"></div>
+                    </div>
+
+                    <!-- Annual Sales Chart -->
+                    <div class="bg-white p-6 rounded-lg shadow-lg">
+                        <h2 class="text-xl font-semibold mb-4">Annual Sales</h2>
+                        <div id="annualChart"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Add charts initialization script -->
+            <script>
+                try {
+                    // Parse the JSON data
+                    const weeklyData = JSON.parse('{{ weekly_data|escapejs }}');
+                    const weeklyLabels = JSON.parse('{{ weekly_labels|escapejs }}');
+                    const monthlyData = JSON.parse('{{ monthly_data|escapejs }}');
+                    const monthlyLabels = JSON.parse('{{ monthly_labels|escapejs }}');
+                    const annualData = JSON.parse('{{ annual_data|escapejs }}');
+                    const annualLabels = JSON.parse('{{ annual_labels|escapejs }}');
+
+                    // Weekly Sales Chart
+                    const weeklyOptions = {
+                        series: weeklyData,
+                        chart: {
+                            type: 'bar',
+                            height: 350
+                        },
+                        plotOptions: {
+                            bar: {
+                                horizontal: false,
+                                columnWidth: '55%',
+                                endingShape: 'rounded'
+                            },
+                        },
+                        xaxis: {
+                            categories: weeklyLabels,
+                        },
+                        yaxis: {
+                            title: {
+                                text: 'Sales (₱)'
+                            }
+                        },
+                        fill: {
+                            opacity: 1
+                        }
+                    };
+
+                    // Monthly Sales Chart
+                    const monthlyOptions = {
+                        series: monthlyData,
+                        chart: {
+                            height: 350,
+                            type: 'line'
+                        },
+                        stroke: {
+                            curve: 'smooth'
+                        },
+                        xaxis: {
+                            categories: monthlyLabels
+                        },
+                        yaxis: {
+                            title: {
+                                text: 'Sales (₱)'
+                            }
+                        }
+                    };
+
+                    // Annual Sales Chart
+                    const annualOptions = {
+                        series: annualData,
+                        chart: {
+                            height: 350,
+                            type: 'area'
+                        },
+                        stroke: {
+                            curve: 'smooth'
+                        },
+                        xaxis: {
+                            categories: annualLabels
+                        },
+                        yaxis: {
+                            title: {
+                                text: 'Sales (₱)'
+                            }
+                        },
+                        fill: {
+                            type: 'gradient'
+                        }
+                    };
+
+                    // Render the charts
+                    if (weeklyData.length > 0) {
+                        const weeklyChart = new ApexCharts(document.querySelector("#weeklyChart"), weeklyOptions);
+                        weeklyChart.render();
+                    }
+
+                    if (monthlyData.length > 0) {
+                        const monthlyChart = new ApexCharts(document.querySelector("#monthlyChart"), monthlyOptions);
+                        monthlyChart.render();
+                    }
+
+                    if (annualData.length > 0) {
+                        const annualChart = new ApexCharts(document.querySelector("#annualChart"), annualOptions);
+                        annualChart.render();
+                    }
+                } catch (error) {
+                    console.error('Error initializing charts:', error);
+                }
+            </script>
             {% endblock %}
         </div>
     </div>

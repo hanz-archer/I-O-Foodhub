@@ -1051,9 +1051,9 @@ def add_item(request):
                 expiration_date = request.POST.get('expiration_date') or None
                 picture = request.FILES.get('picture')
                 
-                # Check if item_id is unique
-                if Item.objects.filter(item_id=item_id).exists():
-                    raise ValidationError("Item ID already exists. Please use a different ID.")
+                # Check if item_id is unique within the stall
+                if Item.objects.filter(item_id=item_id, stall=admin.stall).exists():
+                    raise ValidationError("Item ID already exists in your stall. Please use a different ID.")
                 
                 # Get category instance
                 category = get_object_or_404(Category, id=category_id, stall=admin.stall)
@@ -1158,49 +1158,6 @@ def add_item(request):
         'message': 'Invalid request method'
     })
 
-@admin_required
-def delete_item(request, item_id):
-    if request.method == 'POST':
-        try:
-            with transaction.atomic():
-                admin = AdminProfile.objects.get(id=request.session.get('admin_id'))
-                item = get_object_or_404(Item, id=item_id, stall=admin.stall)
-                
-                # Return quantities back to supplies
-                for supply_relation in item.item_supplies.all():
-                    total_qty_to_return = supply_relation.quantity_per_item * item.quantity
-                    supply = supply_relation.supply
-                    supply.quantity += total_qty_to_return
-                    supply.save()
-                
-                item_name = item.name
-                
-                # Delete the item's picture if it exists
-                if item.picture:
-                    try:
-                        item.picture.delete()
-                    except Exception as e:
-                        print(f"Error deleting picture: {e}")
-                
-                # Delete item (this will cascade delete all relations)
-                item.delete()
-                
-                return JsonResponse({
-                    'status': 'success',
-                    'message': f'Item "{item_name}" deleted successfully'
-                })
-                
-        except Exception as e:
-            return JsonResponse({
-                'status': 'error',
-                'message': str(e)
-            })
-            
-    return JsonResponse({
-        'status': 'error',
-        'message': 'Invalid request method'
-    })
-    
 
 
 
@@ -1351,4 +1308,48 @@ def edit_item(request, item_id):
             'status': 'error',
             'message': str(e)
         })
+    
+
+@admin_required
+def delete_item(request, item_id):
+    if request.method == 'POST':
+        try:
+            with transaction.atomic():
+                admin = AdminProfile.objects.get(id=request.session.get('admin_id'))
+                item = get_object_or_404(Item, id=item_id, stall=admin.stall)
+                
+                # Return quantities back to supplies
+                for supply_relation in item.item_supplies.all():
+                    total_qty_to_return = supply_relation.quantity_per_item * item.quantity
+                    supply = supply_relation.supply
+                    supply.quantity += total_qty_to_return
+                    supply.save()
+                
+                item_name = item.name
+                
+                # Delete the item's picture if it exists
+                if item.picture:
+                    try:
+                        item.picture.delete()
+                    except Exception as e:
+                        print(f"Error deleting picture: {e}")
+                
+                # Delete item (this will cascade delete all relations)
+                item.delete()
+                
+                return JsonResponse({
+                    'status': 'success',
+                    'message': f'Item "{item_name}" deleted successfully'
+                })
+                
+        except Exception as e:
+            return JsonResponse({
+                'status': 'error',
+                'message': str(e)
+            })
+            
+    return JsonResponse({
+        'status': 'error',
+        'message': 'Invalid request method'
+    })
     

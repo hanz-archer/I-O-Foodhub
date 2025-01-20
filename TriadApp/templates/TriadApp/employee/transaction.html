@@ -29,8 +29,10 @@
                     <th class="px-6 py-3 text-left">Transaction ID</th>
                     <th class="px-6 py-3 text-left">Date</th>
                     <th class="px-6 py-3 text-left">Item Name</th>
+                    <th class="px-6 py-3 text-left">Add-ons</th>
                     <th class="px-6 py-3 text-left">Quantity</th>
                     <th class="px-6 py-3 text-left">Price</th>
+                    <th class="px-6 py-3 text-left">Add-ons Total</th>
                     <th class="px-6 py-3 text-left">Subtotal</th>
                     <th class="px-6 py-3 text-left">Actions</th>
                 </tr>
@@ -45,9 +47,27 @@
                     <td class="px-6 py-4">{{ item.transaction.transaction_id }}</td>
                     <td class="px-6 py-4">{{ item.transaction.date|date:"Y-m-d" }}</td>
                     <td class="px-6 py-4">{{ item.item.name }}</td>
+                    <td class="px-6 py-4">
+                        {% if item.add_ons.all %}
+                            <ul class="list-disc list-inside">
+                            {% for addon in item.add_ons.all %}
+                                <li>{{ addon.add_on.name }} (x{{ addon.quantity }}) - ₱{{ addon.subtotal }}</li>
+                            {% endfor %}
+                            </ul>
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
                     <td class="px-6 py-4">{{ item.quantity }}</td>
-                    <td class="px-6 py-4">₱{{ item.item.price }}</td>
-                    <td class="px-6 py-4">₱{{ item.subtotal }}</td>
+                    <td class="px-6 py-4">₱{{ item.unit_price }}</td>
+                    <td class="px-6 py-4">
+                        {% if item.add_ons.all %}
+                            ₱{{ item.addons_total }}
+                        {% else %}
+                            ₱0
+                        {% endif %}
+                    </td>
+                    <td class="px-6 py-4">₱{{ item.transaction.total_amount }}</td>
                     <td class="px-6 py-4">
                         <button onclick="downloadSingle('{{ item.transaction.id }}')"
                                 type="button"
@@ -58,7 +78,7 @@
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="8" class="px-6 py-4 text-center text-gray-500">
+                    <td colspan="10" class="px-6 py-4 text-center text-gray-500">
                         No transactions found
                     </td>
                 </tr>

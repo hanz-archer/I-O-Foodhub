@@ -115,13 +115,20 @@ function addToCart(itemElement) {
     const itemName = itemElement.dataset.itemName;
     const itemPrice = parseFloat(itemElement.dataset.itemPrice);
     const hasAddOns = itemElement.dataset.hasAddons === 'true';
-
+    
+    console.log('Item:', itemId, 'Has Add-ons:', hasAddOns); // Debug log
+    
     if (hasAddOns) {
         // Fetch add-ons for this item
         fetch(`/employee/get-addons/${itemId}/`)
             .then(response => response.json())
-            .then(addOns => {
-                showAddOnsModal(itemId, itemName, itemPrice, addOns);
+            .then(data => {
+                if (data.status === 'success') {
+                    showAddOnsModal(itemId, itemName, itemPrice, data.addons);
+                } else {
+                    console.error('Error:', data.message);
+                    addItemToCart(itemId, itemName, itemPrice, []);
+                }
             })
             .catch(error => {
                 console.error('Error fetching add-ons:', error);

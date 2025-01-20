@@ -133,115 +133,137 @@
 
             <!-- Add charts initialization script -->
             <script>
-                // Weekly Sales Chart
-                const weeklyOptions = {
-                    series: [{
-                        name: 'Stall A',
-                        data: [30, 40, 35, 50, 49, 60, 70]
-                    }, {
-                        name: 'Stall B',
-                        data: [20, 35, 40, 45, 39, 52, 65]
-                    }, {
-                        name: 'Stall C',
-                        data: [25, 30, 45, 55, 44, 48, 60]
-                    }],
-                    chart: {
-                        type: 'bar',
-                        height: 350,
-                        stacked: true,
-                        toolbar: {
-                            show: true
+                try {
+                    // Parse all JSON data consistently
+                    const weeklyData = JSON.parse('{{ weekly_data|escapejs }}');
+                    const weeklyLabels = JSON.parse('{{ weekly_labels|escapejs }}');
+                    const monthlyData = JSON.parse('{{ monthly_data|escapejs }}');
+                    const monthlyLabels = JSON.parse('{{ monthly_labels|escapejs }}');
+                    const annualData = JSON.parse('{{ annual_data|escapejs }}');
+                    const annualLabels = JSON.parse('{{ annual_labels|escapejs }}');
+
+                    console.log('Weekly Data:', weeklyData);
+                    console.log('Monthly Data:', monthlyData);
+                    console.log('Annual Data:', annualData);
+
+                    // Weekly Sales Chart
+                    const weeklyOptions = {
+                        series: weeklyData,
+                        chart: {
+                            type: 'bar',
+                            height: 350,
+                            stacked: true,
+                            toolbar: {
+                                show: true
+                            },
                         },
-                    },
-                    plotOptions: {
-                        bar: {
-                            horizontal: false,
-                            columnWidth: '55%',
-                            endingShape: 'rounded'
+                        plotOptions: {
+                            bar: {
+                                horizontal: false,
+                                columnWidth: '55%',
+                                endingShape: 'rounded'
+                            },
                         },
-                    },
-                    xaxis: {
-                        categories: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-                    },
-                    legend: {
-                        position: 'top'
-                    },
-                    fill: {
-                        opacity: 1
-                    }
-                };
+                        xaxis: {
+                            categories: weeklyLabels,
+                        },
+                        yaxis: {
+                            title: {
+                                text: 'Sales (₱)'
+                            }
+                        },
+                        legend: {
+                            position: 'top'
+                        },
+                        fill: {
+                            opacity: 1
+                        }
+                    };
 
-                // Monthly Sales Chart
-                const monthlyOptions = {
-                    series: [{
-                        name: 'Monthly Sales',
-                        data: [10, 41, 35, 51, 49, 62, 69, 91, 148, 35, 51, 49]
-                    }],
-                    chart: {
-                        height: 350,
-                        type: 'line',
-                        zoom: {
+                    // Monthly Sales Chart
+                    const monthlyOptions = {
+                        series: monthlyData,
+                        chart: {
+                            height: 350,
+                            type: 'line',
+                            zoom: {
+                                enabled: false
+                            }
+                        },
+                        stroke: {
+                            curve: 'smooth'
+                        },
+                        xaxis: {
+                            categories: monthlyLabels
+                        },
+                        yaxis: {
+                            title: {
+                                text: 'Sales (₱)'
+                            }
+                        },
+                        title: {
+                            text: '2024 Monthly Sales Trend',
+                            align: 'left'
+                        }
+                    };
+
+                    // Annual Sales Chart
+                    const annualOptions = {
+                        series: annualData,
+                        chart: {
+                            height: 350,
+                            type: 'area',
+                            zoom: {
+                                enabled: false
+                            }
+                        },
+                        dataLabels: {
                             enabled: false
+                        },
+                        stroke: {
+                            curve: 'smooth'
+                        },
+                        xaxis: {
+                            categories: annualLabels
+                        },
+                        yaxis: {
+                            title: {
+                                text: 'Sales (₱)'
+                            }
+                        },
+                        title: {
+                            text: 'Annual Sales Growth',
+                            align: 'left'
+                        },
+                        fill: {
+                            type: 'gradient',
+                            gradient: {
+                                shadeIntensity: 1,
+                                opacityFrom: 0.7,
+                                opacityTo: 0.9,
+                                stops: [0, 90, 100]
+                            }
                         }
-                    },
-                    stroke: {
-                        curve: 'smooth'
-                    },
-                    xaxis: {
-                        categories: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-                    },
-                    title: {
-                        text: '2024 Monthly Sales Trend',
-                        align: 'left'
+                    };
+
+                    // Only render charts if data exists
+                    if (weeklyData.length > 0) {
+                        const weeklyChart = new ApexCharts(document.querySelector("#weeklyChart"), weeklyOptions);
+                        weeklyChart.render();
                     }
-                };
 
-                // Annual Sales Chart
-                const annualOptions = {
-                    series: [{
-                        name: 'Annual Sales',
-                        data: [2.3, 3.1, 4.0, 4.5, 5.1]
-                    }],
-                    chart: {
-                        height: 350,
-                        type: 'area',
-                        zoom: {
-                            enabled: false
-                        }
-                    },
-                    dataLabels: {
-                        enabled: false
-                    },
-                    stroke: {
-                        curve: 'smooth'
-                    },
-                    xaxis: {
-                        categories: ['2020', '2021', '2022', '2023', '2024']
-                    },
-                    title: {
-                        text: 'Annual Sales Growth',
-                        align: 'left'
-                    },
-                    fill: {
-                        type: 'gradient',
-                        gradient: {
-                            shadeIntensity: 1,
-                            opacityFrom: 0.7,
-                            opacityTo: 0.9,
-                            stops: [0, 90, 100]
-                        }
+                    if (monthlyData.length > 0) {
+                        const monthlyChart = new ApexCharts(document.querySelector("#monthlyChart"), monthlyOptions);
+                        monthlyChart.render();
                     }
-                };
 
-                // Initialize the charts
-                const weeklyChart = new ApexCharts(document.querySelector("#weeklyChart"), weeklyOptions);
-                const monthlyChart = new ApexCharts(document.querySelector("#monthlyChart"), monthlyOptions);
-                const annualChart = new ApexCharts(document.querySelector("#annualChart"), annualOptions);
-
-                // Render the charts
-                weeklyChart.render();
-                monthlyChart.render();
-                annualChart.render();
+                    if (annualData.length > 0) {
+                        const annualChart = new ApexCharts(document.querySelector("#annualChart"), annualOptions);
+                        annualChart.render();
+                    }
+                } catch (error) {
+                    console.error('Error initializing charts:', error);
+                }
             </script>
             {% endblock %}
         </div>
