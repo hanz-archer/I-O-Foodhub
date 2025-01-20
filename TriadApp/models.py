@@ -12,6 +12,8 @@ import string
 from django.utils import timezone
 from dateutil.relativedelta import relativedelta
 from datetime import datetime
+import socket
+import re
 
 class Stall(models.Model):
     store_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
@@ -274,47 +276,46 @@ class LoginHistory(models.Model):
 
     @staticmethod
     def get_system_info():
-        system_info = {
-            'operating_system': platform.system(),
-            'os_version': platform.version(),
-            'processor_info': platform.processor(),
-            'gpu_info': '',
-            'wifi_name': ''
-        }
-        
         try:
-            # Get GPU information
-            gpus = GPUtil.getGPUs()
-            if gpus:
-                system_info['gpu_info'] = f"{gpus[0].name} ({gpus[0].memoryTotal}MB)"
-            
-            # Get WiFi name (Windows only)
-            if platform.system() == 'Windows':
-                w = wmi.WMI()
-                os_info = w.Win32_OperatingSystem()[0]
-                processor = w.Win32_Processor()[0]
-                
-                # Get WiFi name using netsh command
-                try:
-                    import subprocess
-                    result = subprocess.run(['netsh', 'wlan', 'show', 'interfaces'], 
-                                         capture_output=True, text=True)
-                    if 'SSID' in result.stdout:
-                        for line in result.stdout.split('\n'):
-                            if 'SSID' in line and 'BSSID' not in line:
-                                system_info['wifi_name'] = line.split(':')[1].strip()
-                                break
-                except:
-                    pass
-                
-                system_info.update({
-                    'os_version': os_info.Caption,
-                    'processor_info': processor.Name
-                })
+            # Get OS information
+            operating_system = platform.system()
+            os_version = platform.release()
+
+            # Get CPU information
+            processor_info = f"{platform.processor()} ({psutil.cpu_count()} cores)"
+
+            # Get GPU information (simplified)
+            gpu_info = "Integrated Graphics"  # Default fallback
+
+            # Get network information
+            wifi_name = "Unknown"
+            try:
+                # Get network interfaces
+                interfaces = psutil.net_if_addrs()
+                for interface, addrs in interfaces.items():
+                    # Look for wireless interfaces (common naming patterns)
+                    if any(pattern in interface.lower() for pattern in ['wlan', 'wifi', 'wireless']):
+                        wifi_name = interface
+                        break
+            except:
+                pass
+
+            return {
+                'operating_system': operating_system,
+                'os_version': os_version,
+                'processor_info': processor_info,
+                'gpu_info': gpu_info,
+                'wifi_name': wifi_name
+            }
         except Exception as e:
             print(f"Error getting system info: {str(e)}")
-            
-        return system_info
+            return {
+                'operating_system': 'Unknown',
+                'os_version': 'Unknown',
+                'processor_info': 'Unknown',
+                'gpu_info': 'Unknown',
+                'wifi_name': 'Unknown'
+            }
 
 class Employee(models.Model):
     stall = models.ForeignKey('Stall', on_delete=models.CASCADE, related_name='employees')
