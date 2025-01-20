@@ -4,9 +4,7 @@ import uuid
 from django.core.exceptions import ValidationError
 from django.conf import settings
 import platform
-import GPUtil
 import psutil
-import wmi
 import random
 import string
 from django.utils import timezone
