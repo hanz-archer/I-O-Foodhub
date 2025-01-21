@@ -91,7 +91,7 @@
     </div>
 </div>
 
-<!-- Add Renewal Modal -->
+<!-- Renewal Modal -->
 <div id="renewModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden overflow-y-auto h-full w-full">
     <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
         <h3 class="text-lg font-medium leading-6 text-gray-900 mb-4">Renew Contract</h3>
@@ -100,16 +100,16 @@
             <div class="space-y-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Contract Duration</label>
-                    <select name="duration_months" required 
-                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
-                        <option value="3">3 Months</option>
-                        <option value="6">6 Months</option>
-                        <option value="12">1 Year</option>
-                        <option value="24">2 Years</option>
-                    </select>
+                    <div class="mt-1 block w-full py-2 text-gray-700">
+                        1 Year (Fixed)
+                    </div>
+                    <input type="hidden" name="duration_months" value="12">
                 </div>
                 <div class="text-sm text-gray-600">
-                    Monthly Rate: ₱5,000.00 (Fixed)
+                    Monthly Rate: ₱8,000.00 (Fixed)
+                </div>
+                <div class="text-sm text-gray-600">
+                    Total Amount: ₱96,000.00
                 </div>
             </div>
             <div class="mt-6 flex justify-end gap-3">
@@ -157,25 +157,10 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Calculate total amount when duration changes
-    const durationSelect = document.getElementById('duration_months');
-    if (durationSelect) {
-        durationSelect.addEventListener('change', function() {
-            const duration = parseInt(this.value);
-            const monthlyRate = 5000; // Fixed rate
-            const total = duration * monthlyRate;
-            const totalElement = document.getElementById('total_amount');
-            if (totalElement) {
-                totalElement.textContent = `Total Amount: ₱${total.toLocaleString('en-US', {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2
-                })}`;
-            }
-        });
-
-        // Calculate initial total
-        durationSelect.dispatchEvent(new Event('change'));
-    }
+    // Remove the duration change listener since it's now fixed
+    const monthlyRate = 8000; // Updated fixed rate
+    const duration = 12; // Fixed duration
+    const total = duration * monthlyRate;
 });
 
 // Modal functions

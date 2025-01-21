@@ -50,6 +50,9 @@
                             Contract Period
                         </th>
                         <th class="px-6 py-4 text-left text-sm font-semibold">
+                            Status
+                        </th>
+                        <th class="px-6 py-4 text-left text-sm font-semibold">
                             Actions
                         </th>
                     </tr>
@@ -73,6 +76,9 @@
                         <td class="px-6 py-4 text-sm text-gray-600">
                             {{ supplier.contract_start_date|date:"M d, Y" }} - 
                             {{ supplier.contract_end_date|date:"M d, Y" }}
+                        </td>
+                        <td class="px-6 py-4 text-sm text-gray-600">
+                            {{ supplier.status }}
                         </td>
                         <td class="px-6 py-4 text-sm">
                             <button onclick="openEditModal('{{ supplier.id }}')" 
@@ -123,7 +129,6 @@
                         <label class="block text-gray-700 text-sm font-bold mb-2">Contact Person</label>
                         <input type="text" name="contact_person" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500">
                     </div>
-                    <!-- License Number - Only shown when adding new supplier -->
                     <div class="mb-4" id="licenseNumberField">
                         <label class="block text-gray-700 text-sm font-bold mb-2">License Number</label>
                         <input type="text" 
@@ -140,14 +145,9 @@
                         <input type="email" name="email_address" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500">
                     </div>
                     <div class="mb-4">
-                        <label class="block text-gray-700 text-sm font-bold mb-2">Contract Start Date</label>
-                        <input type="date" name="contract_start_date" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500">
-                    </div>
-                    <div class="mb-4">
                         <label class="block text-gray-700 text-sm font-bold mb-2">Contract End Date</label>
                         <input type="date" name="contract_end_date" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500">
                     </div>
-                    
                     <div class="mb-4">
                         <label class="block text-gray-700 text-sm font-bold mb-2">Address</label>
                         <input type="text" name="address" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500">
@@ -176,6 +176,15 @@
         document.getElementById('supplierForm').reset();
         document.getElementById('licenseNumberField').style.display = 'block';
         document.getElementById('supplierForm').action = '';
+        
+        // Clear any previous validation states
+        const inputs = document.getElementById('supplierForm').querySelectorAll('input');
+        inputs.forEach(input => {
+            input.classList.remove('border-red-500');
+            const errorMsg = input.parentElement.querySelector('.error-message');
+            if (errorMsg) errorMsg.remove();
+        });
+        
         document.getElementById('supplierModal').classList.remove('hidden');
     }
 
@@ -245,39 +254,126 @@
     document.getElementById('supplierForm').addEventListener('submit', function(e) {
         e.preventDefault();
         const formData = new FormData(this);
-        const licenseField = document.querySelector('input[name="license_number"]');
-        const originalLicense = licenseField.dataset.originalLicense;
-        const newLicense = licenseField.value;
-
-        // If editing and license hasn't changed, use the original license
-        if (originalLicense && newLicense === originalLicense) {
-            formData.set('license_number', originalLicense);
-        }
+        const modalTitle = document.getElementById('modalTitle').textContent;
+        const isNewSupplier = modalTitle === 'Add New Supplier';
         
+        // Get the form action URL (important for edit)
+        const formAction = this.action || window.location.href;
+
+        // Validate required fields
+        const requiredFields = {
+            'firstname': 'First Name',
+            'lastname': 'Last Name',
+            'contact_person': 'Contact Person',
+            'license_number': 'License Number',
+            'contact_number': 'Contact Number',
+            'email_address': 'Email Address',
+            'address': 'Address',
+            'contract_end_date': 'Contract End Date'
+        };
+
+        const formValues = {};
+        let hasError = false;
+
+        // Check for empty required fields and collect values
+        for (const [fieldName, fieldLabel] of Object.entries(requiredFields)) {
+            const value = formData.get(fieldName)?.trim();
+            formValues[fieldName] = value;
+            
+            if (!value) {
+                hasError = true;
+                Swal.fire({
+                    title: 'Error!',
+                    text: `${fieldLabel} is required.`,
+                    icon: 'error',
+                    confirmButtonText: 'OK'
+                });
+                return;
+            }
+        }
+
+        if (hasError) return;
+
+        // Get form values for confirmation message
+        const firstName = formValues.firstname;
+        const middleInitial = formData.get('middle_initial');
+        const lastName = formValues.lastname;
+        const contactPerson = formValues.contact_person;
+        const licenseNumber = formValues.license_number;
+        const contactNumber = formValues.contact_number;
+        const email = formValues.email_address;
+        const address = formValues.address;
+        const endDate = formValues.contract_end_date;
+        
+        // Calculate initial status
+        const today = new Date();
+        const contractEndDate = new Date(endDate);
+        const status = contractEndDate < today ? 'Ended' : 'Active';
+        
+        // Create confirmation message with details
+        const confirmationDetails = `
+            <div class="text-left">
+                <p class="font-semibold mb-2">Please confirm the following details:</p>
+                <p><span class="font-medium">Name:</span> ${firstName} ${middleInitial ? middleInitial + '.' : ''} ${lastName}</p>
+                <p><span class="font-medium">Contact Person:</span> ${contactPerson}</p>
+                <p><span class="font-medium">License Number:</span> ${licenseNumber}</p>
+                <p><span class="font-medium">Contact Number:</span> ${contactNumber}</p>
+                <p><span class="font-medium">Email:</span> ${email}</p>
+                <p><span class="font-medium">Address:</span> ${address}</p>
+                <p><span class="font-medium">Contract End:</span> ${contractEndDate.toLocaleDateString()}</p>
+                <p><span class="font-medium">Status:</span> 
+                    <span class="px-2 py-1 rounded-full text-sm ${status === 'Active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
+                        ${status}
+                    </span>
+                </p>
+            </div>
+        `;
+
         Swal.fire({
-            title: 'Save Supplier',
-            text: 'Are you sure you want to save these changes?',
+            title: isNewSupplier ? 'Add New Supplier' : 'Save Changes',
+            html: isNewSupplier ? confirmationDetails : 'Are you sure you want to save these changes?',
             icon: 'question',
             showCancelButton: true,
-            confirmButtonText: 'Yes, save it!',
-            cancelButtonText: 'No, cancel'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                fetch(this.action, {
+            confirmButtonText: isNewSupplier ? 'Yes, Add' : 'Yes, Save',
+            cancelButtonText: 'Cancel',
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            showLoaderOnConfirm: true,
+            preConfirm: () => {
+                return fetch(formAction, {  // Use formAction instead of window.location.href
                     method: 'POST',
                     body: formData,
                     headers: {
                         'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
                     }
                 })
                 .then(response => response.json())
                 .then(data => {
                     if (data.status === 'success') {
-                        Swal.fire('Success!', data.message, 'success')
-                            .then(() => window.location.reload());
-                    } else {
-                        Swal.fire('Error!', data.message, 'error');
+                        return data;
                     }
+                    throw new Error(data.message || 'Something went wrong');
+                })
+                .catch(error => {
+                    Swal.showValidationMessage(
+                        `Request failed: ${error.message}`
+                    );
+                });
+            },
+            allowOutsideClick: () => !Swal.isLoading()
+        }).then((result) => {
+            if (result.isConfirmed) {
+                Swal.fire({
+                    title: 'Success!',
+                    text: isNewSupplier ? 
+                        'New supplier has been successfully added!' : 
+                        'Changes have been successfully saved!',
+                    icon: 'success',
+                    timer: 2000,
+                    showConfirmButton: false
+                }).then(() => {
+                    window.location.reload();
                 });
             }
         });
@@ -321,7 +417,7 @@
         if (suppliers.length === 0) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="6" class="px-6 py-4 text-center text-sm text-gray-500">
+                    <td colspan="7" class="px-6 py-4 text-center text-sm text-gray-500">
                         No suppliers found
                     </td>
                 </tr>
@@ -330,10 +426,14 @@
         }
         
         suppliers.forEach(supplier => {
+            const today = new Date();
+            const endDate = new Date(supplier.contract_end_date);
+            const status = endDate < today ? 'Ended' : 'Active';
+            
             tbody.innerHTML += `
                 <tr class="hover:bg-gray-50">
                     <td class="px-6 py-4 text-sm text-gray-900">
-                        ${supplier.firstname} ${supplier.middle_initial || ''}${supplier.middle_initial ? '.' : ''} ${supplier.lastname}
+                        ${supplier.firstname} ${supplier.middle_initial}. ${supplier.lastname}
                     </td>
                     <td class="px-6 py-4 text-sm text-gray-600">
                         ${supplier.license_number}
@@ -346,8 +446,11 @@
                         <div>${supplier.email_address}</div>
                     </td>
                     <td class="px-6 py-4 text-sm text-gray-600">
-                        ${formatDate(supplier.contract_start_date)} - 
-                        ${formatDate(supplier.contract_end_date)}
+                        ${new Date(supplier.contract_start_date).toLocaleDateString()} - 
+                        ${new Date(supplier.contract_end_date).toLocaleDateString()}
+                    </td>
+                    <td class="px-6 py-4 text-sm text-gray-600">
+                        ${status}
                     </td>
                     <td class="px-6 py-4 text-sm">
                         <button onclick="openEditModal('${supplier.id}')" 
@@ -363,21 +466,6 @@
             `;
         });
     }
-
-    // Helper function to format dates
-    function formatDate(dateString) {
-        if (!dateString) return '';
-        const date = new Date(dateString);
-        return date.toLocaleDateString('en-US', { 
-            month: 'short', 
-            day: 'numeric', 
-            year: 'numeric' 
-        });
-    }
-
-    function clearSearch() {
-        document.getElementById('searchInput').value = '';
-        performSearch('');
-    }
 </script>
+
 {% endblock %}

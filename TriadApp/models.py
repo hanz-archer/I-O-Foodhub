@@ -9,9 +9,10 @@ import random
 import string
 from django.utils import timezone
 from dateutil.relativedelta import relativedelta
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 import socket
 import re
+from decimal import Decimal
 
 class Stall(models.Model):
     store_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
@@ -82,6 +83,11 @@ class CustomUser(AbstractUser):
         db_table = 'custom_user'
 
 class Supplier(models.Model):
+    STATUS_CHOICES = [
+        ('active', 'Active'),
+        ('ended', 'Ended'),
+    ]
+    
     stall = models.ForeignKey(Stall, on_delete=models.CASCADE)
     firstname = models.CharField(max_length=100)
     middle_initial = models.CharField(max_length=1)
@@ -91,8 +97,9 @@ class Supplier(models.Model):
     address = models.TextField(max_length=50)
     contact_number = models.CharField(max_length=15)
     email_address = models.EmailField()
-    contract_start_date = models.DateField()
+    contract_start_date = models.DateField(default=date.today)
     contract_end_date = models.DateField()
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='active')
 
     def clean(self):
         # Validate dates
@@ -102,13 +109,20 @@ class Supplier(models.Model):
                     'contract_start_date': 'Start date cannot be after end date',
                     'contract_end_date': 'End date cannot be before start date'
                 })
+        
+        # Update status based on end date
+        today = date.today()
+        if self.contract_end_date < today:
+            self.status = 'expired'
+        else:
+            self.status = 'active'
 
     def save(self, *args, **kwargs):
         self.clean()
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"{self.firstname} {self.lastname} - {self.stall.name}"
+        return f"{self.firstname} {self.lastname} - {self.stall.name} ({self.status})"
 
 class Supply(models.Model):
     STATUS_CHOICES = [
@@ -433,13 +447,13 @@ class StallContract(models.Model):
 
     @property
     def end_date(self):
-        if not self.start_date:
-            return None
-        return self.start_date + timedelta(days=self.duration_months * 30)
+        if self.start_date:
+            return self.start_date + timedelta(days=365)  # Exactly 1 year
+        return None
 
     @property
     def total_amount(self):
-        return self.monthly_rate * self.duration_months
+        return Decimal('8000.00') * 12  # Fixed rate of 8000 for 12 months
 
     def __str__(self):
         status = f"(Not Started)" if not self.start_date else f"({self.start_date} to {self.end_date})"

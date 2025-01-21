@@ -92,5 +92,9 @@ urlpatterns = [
 
     path('superadmin/contracts/<int:contract_id>/renew/', super_admin.renew_contract, name='renew_contract'),
 
+
+
+     path('admin/reports/', stall_admins.admin_reports, name='admin_reports'),
+
 ]
         

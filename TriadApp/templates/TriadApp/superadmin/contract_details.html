@@ -51,23 +51,35 @@
                 <div class="space-y-3">
                     <div class="flex justify-between">
                         <span class="text-gray-600">Start Date:</span>
-                        <span>{{ contract.start_date|date:"M d, Y" }}</span>
+                        <span>
+                            {% if contract.start_date %}
+                                {{ contract.start_date|date:"M d, Y" }}
+                            {% else %}
+                                Pending (Will start upon first payment)
+                            {% endif %}
+                        </span>
                     </div>
                     <div class="flex justify-between">
                         <span class="text-gray-600">End Date:</span>
-                        <span>{{ contract.end_date|date:"M d, Y" }}</span>
+                        <span>
+                            {% if contract.start_date %}
+                                {{ contract.end_date|date:"M d, Y" }}
+                            {% else %}
+                                Pending (Will be 1 year from first payment)
+                            {% endif %}
+                        </span>
                     </div>
                     <div class="flex justify-between">
-                        <span class="text-gray-600">Duration:</span>
-                        <span>{{ contract.duration_months }} months</span>
+                        <span class="text-gray-600">Contract Period:</span>
+                        <span>1 Year</span>
                     </div>
                     <div class="flex justify-between">
                         <span class="text-gray-600">Monthly Rate:</span>
-                        <span>₱{{ contract.monthly_rate }}</span>
+                        <span>₱8,000.00</span>
                     </div>
                     <div class="flex justify-between font-semibold">
                         <span>Total Contract Amount:</span>
-                        <span>₱{{ contract.total_amount }}</span>
+                        <span>₱96,000.00</span>
                     </div>
                 </div>
             </div>
@@ -78,16 +90,24 @@
                 <div class="space-y-3">
                     <div class="flex justify-between">
                         <span class="text-gray-600">Total Amount:</span>
-                        <span>₱{{ contract.total_amount }}</span>
+                        <span>₱96,000.00</span>
                     </div>
                     <div class="flex justify-between">
                         <span class="text-gray-600">Total Paid:</span>
-                        <span>₱{{ total_paid }}</span>
+                        <span>₱{{ total_paid|floatformat:2 }}</span>
                     </div>
                     <div class="flex justify-between font-semibold">
                         <span>Remaining Balance:</span>
-                        <span>₱{{ remaining_balance }}</span>
+                        <span>₱{{ remaining_balance|floatformat:2 }}</span>
                     </div>
+                    {% if not contract.start_date %}
+                    <div class="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                        <p class="text-sm text-blue-700">
+                            <strong>Note:</strong> Contract period will begin upon first payment and will be valid for 1 year. 
+                            Total contract amount is ₱96,000.00 (₱8,000.00 monthly for 12 months).
+                        </p>
+                    </div>
+                    {% endif %}
                 </div>
                 
                 <button onclick="showPaymentModal('{{ contract.id }}')"

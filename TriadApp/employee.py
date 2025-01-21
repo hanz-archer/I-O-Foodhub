@@ -139,11 +139,41 @@ def process_order(request):
                 item_obj.quantity -= quantity
                 item_obj.save()
             
-            return JsonResponse({
+            # Prepare receipt data
+            receipt_items = []
+            for item in cart_items:
+                item_obj = Item.objects.get(item_id=item['id'], stall=employee.stall)
+                item_data = {
+                    'name': item_obj.name,
+                    'quantity': item['quantity'],
+                    'price': float(item_obj.price),
+                    'addOns': []
+                }
+                
+                if 'addOns' in item:
+                    for add_on in item['addOns']:
+                        add_on_obj = ItemAddOn.objects.get(id=add_on['id'], item=item_obj)
+                        item_data['addOns'].append({
+                            'name': add_on_obj.name,
+                            'quantity': add_on['quantity'],
+                            'price': float(add_on_obj.price)
+                        })
+                
+                receipt_items.append(item_data)
+            
+            receipt_data = {
                 'status': 'success',
                 'message': 'Order processed successfully',
-                'transaction_id': transaction_obj.transaction_id
-            })
+                'transaction_id': transaction_obj.transaction_id,
+                'stall_name': employee.stall.name,
+                'employee_name': f"{employee.firstname} {employee.lastname}",
+                'date': timezone.now().strftime('%Y-%m-%d %H:%M:%S'),
+                'items': receipt_items,
+                'total_amount': float(total_amount),
+                'payment_method': payment_method.upper()
+            }
+            
+            return JsonResponse(receipt_data)
             
     except Item.DoesNotExist:
         return JsonResponse({
@@ -158,6 +188,7 @@ def process_order(request):
     except Exception as e:
         print(f"Error processing order: {str(e)}")
         return JsonResponse({'status': 'error', 'message': str(e)})
+
 
 @employee_login_required
 def get_item_addons(request, item_id):

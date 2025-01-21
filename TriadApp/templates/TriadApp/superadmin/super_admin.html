@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Admin Panel{% endblock %}</title>
+    <title>{% block title %}Super Admin Panel{% endblock %}</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.16/dist/tailwind.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
     <link href="https://fonts.googleapis.com/css?family=Poppins:600&display=swap" rel="stylesheet">
@@ -38,23 +38,27 @@
         </button>
 
         <div id="sidebar" class="w-64 h-screen bg-gray-800 text-white fixed sidebar">
-            <!-- Add margin-top to profile section to move it below toggle button -->
+            <!-- Profile section -->
             <div class="p-4 border-b border-gray-400 mt-10">
                 <div class="flex flex-col items-center space-y-3 mb-4 mt-2">
                     {% if super_admin.profile_image %}
-                        <div class="w-24 h-24 rounded-full overflow-hidden ring-4 ring-white shadow-lg">
-                            <img id="profile" 
-                                 src="{{ super_admin.profile_image.url }}" 
-                                 alt="Profile Picture" 
-                                 class="w-full h-full object-cover">
-                        </div>
+                        <a href="{% url 'super_admin_profile' %}" class="hover:opacity-80 transition-opacity duration-200">
+                            <div class="w-24 h-24 rounded-full overflow-hidden ring-4 ring-white shadow-lg">
+                                <img id="profile" 
+                                     src="{{ super_admin.profile_image.url }}" 
+                                     alt="Profile Picture" 
+                                     class="w-full h-full object-cover">
+                            </div>
+                        </a>
                     {% else %}
-                        <div id="profileFallback" 
-                             class="w-24 h-24 rounded-full bg-gray-600 flex items-center justify-center ring-4 ring-white shadow-lg">
-                            <span class="text-3xl text-white font-semibold">
-                                {{ super_admin.first_name|first|upper }}
-                            </span>
-                        </div>
+                        <a href="{% url 'super_admin_profile' %}" class="hover:opacity-80 transition-opacity duration-200">
+                            <div id="profileFallback" 
+                                 class="w-24 h-24 rounded-full bg-gray-600 flex items-center justify-center ring-4 ring-white shadow-lg">
+                                <span class="text-3xl text-white font-semibold">
+                                    {{ super_admin.first_name|first|upper }}
+                                </span>
+                            </div>
+                        </a>
                     {% endif %}
                     
                     <div class="text-center">
@@ -80,18 +84,14 @@
                     <li>
                         <a href="{% url 'register_admin' %}" class="block py-2.5 px-6 text-lg hover:bg-gray-700">Admin Management</a>
                     </li>
-                    <li>
-                        <a href="{% url 'super_admin_profile' %}" class="block py-2.5 px-6 text-lg hover:bg-gray-700">Profile</a>
-                    </li>
+                
                     <li>
                         <a href="{% url 'admin:index' %}" class="block py-2.5 px-6 text-lg hover:bg-gray-700">Super Admin Dashboard</a>
                     </li>
                     <li>
                         <a href="{% url 'manage_contracts' %}" class="block py-2.5 px-6 text-lg hover:bg-gray-700">Stall Contracts</a>
                     </li>
-                    <li>
-                        <a href="#" class="block py-2.5 px-6 text-lg hover:bg-gray-700">Settings</a>
-                    </li>
+                
                     <li class="mt-auto border-t border-gray-700 pt-4">
                         <a href="{% url 'logout' %}" 
                            class="block py-2.5 px-6 text-lg text-red-400 hover:bg-gray-700 hover:text-red-300">

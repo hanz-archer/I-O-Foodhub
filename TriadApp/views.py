@@ -71,6 +71,7 @@ def super_admin(request):
 
 
 
+
 @admin_required
 def admin_dashboard(request):
     admin_id = request.session.get('admin_id')
@@ -387,7 +388,7 @@ def login_view(request):
                         })
                     
                     # Check if stall's contract is expired
-                   
+                    
                     
                     request.session['employee_id'] = employee.id
                     request.session['is_employee'] = True
@@ -477,7 +478,6 @@ def generate_otp():
 
 def forgot_password(request):
     return render(request, 'TriadApp/forgot_password.html')
-
 @csrf_exempt
 def send_otp(request):
     if request.method == 'POST':
@@ -488,8 +488,9 @@ def send_otp(request):
             # Check each user type
             user = CustomUser.objects.filter(email=email).first()
             admin = AdminProfile.objects.filter(email=email).first()
+            employee = Employee.objects.filter(email=email).first()  # Add employee check
             
-            if not user and not admin:
+            if not user and not admin and not employee:  # Include employee in check
                 return JsonResponse({
                     'success': False, 
                     'message': 'No account found with this email address'
@@ -497,7 +498,7 @@ def send_otp(request):
             
             # Determine user type for the message
             user_type = 'Super Admin' if (user and user.is_superuser) else \
-                       'Employee' if user else \
+                       'Employee' if (user or employee) else \
                        'Admin' if admin else 'Unknown'
             
             otp = generate_otp()
@@ -564,6 +565,9 @@ def send_otp(request):
         'message': 'Invalid request method'
     })
 
+
+
+
 @csrf_exempt
 def verify_otp(request):
     if request.method == 'POST':
@@ -580,6 +584,7 @@ def verify_otp(request):
         return JsonResponse({'success': False, 'message': 'Invalid OTP'})
     
     return JsonResponse({'success': False, 'message': 'Invalid request method'})
+
 
 @csrf_exempt
 def reset_password(request):
@@ -611,12 +616,33 @@ def reset_password(request):
                     'redirect': 'admin_login'
                 })
             
+            # Check for employee
+            employee = Employee.objects.filter(email=email).first()
+            if employee:
+                # Update both raw and hashed password
+                employee.raw_password = password  # Store raw password
+                employee.password = make_password(password)  # Store hashed password
+                employee.save()
+                
+                # Update associated CustomUser if it exists
+                employee_user = CustomUser.objects.filter(username=employee.username).first()
+                if employee_user:
+                    employee_user.set_password(password)
+                    employee_user.save()
+                
+                return JsonResponse({
+                    'success': True,
+                    'message': 'Password reset successful!',
+                    'redirect': 'employee_login'
+                })
+            
             return JsonResponse({
                 'success': False,
                 'message': 'User not found'
             })
             
         except Exception as e:
+            print(f"Password reset error: {str(e)}")  # For debugging
             return JsonResponse({
                 'success': False,
                 'message': str(e)
@@ -626,6 +652,15 @@ def reset_password(request):
         'success': False,
         'message': 'Invalid request method'
     })
+
+
+
+
+
+
+
+
+
 
 @csrf_exempt
 def send_contact(request):
@@ -731,6 +766,13 @@ def send_contact(request):
         'success': False,
         'message': 'Invalid request method'
     })
+
+
+
+
+
+
+
 
 def get_client_ip(request):
     x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')

@@ -507,7 +507,7 @@ def manage_contracts(request):
         if not contract.start_date:
             contract.status = 'pending'
         else:
-            contract_end = contract.start_date + timedelta(days=contract.duration_months * 30)
+            contract_end = contract.start_date + timedelta(days=365)  # Fixed to 1 year
             if contract_end < current_date:
                 # Contract has expired
                 contract.status = 'expired'
@@ -518,9 +518,6 @@ def manage_contracts(request):
                 if contract.stall.is_active:
                     contract.stall.is_active = False
                     contract.stall.save()
-                    
-                # Send notification or log the expiration
-                # You might want to implement notification system here
             else:
                 contract.status = 'active'
     
@@ -546,7 +543,7 @@ def add_stall_contract(request):
             ).filter(
                 Q(start_date__gt=current_date) |  # Future contract
                 Q(start_date__lte=current_date, 
-                  start_date__gt=current_date - timedelta(days=365*2))  # Active within 2 years
+                  start_date__gt=current_date - timedelta(days=365))  # Active within 1 year
             ).first()
             
             if existing_contract:
@@ -555,15 +552,8 @@ def add_stall_contract(request):
                     'message': 'This stall already has an active contract'
                 })
             
-            duration_months = int(request.POST.get('duration_months'))
-            monthly_rate = Decimal('5000.00')  # Fixed rate
-            
-            # Validate duration
-            if duration_months not in [3, 6, 12, 24]:
-                return JsonResponse({
-                    'status': 'error',
-                    'message': 'Invalid contract duration'
-                })
+            duration_months = 12  # Fixed to 1 year
+            monthly_rate = Decimal('8000.00')  # Fixed rate
             
             # Create contract without start_date
             contract = StallContract.objects.create(
@@ -579,11 +569,6 @@ def add_stall_contract(request):
                 'redirect_url': reverse('manage_contracts')
             })
             
-        except ValueError as e:
-            return JsonResponse({
-                'status': 'error',
-                'message': 'Invalid input values'
-            })
         except Exception as e:
             return JsonResponse({
                 'status': 'error',
@@ -687,20 +672,12 @@ def renew_contract(request, contract_id):
     if request.method == 'POST':
         try:
             old_contract = get_object_or_404(StallContract, id=contract_id)
-            duration_months = int(request.POST.get('duration_months'))
             
-            # Validate duration
-            if duration_months not in [3, 6, 12, 24]:
-                return JsonResponse({
-                    'status': 'error',
-                    'message': 'Invalid contract duration'
-                })
-            
-            # Create new contract
+            # Create new contract with fixed values
             new_contract = StallContract.objects.create(
                 stall=old_contract.stall,
-                duration_months=duration_months,
-                monthly_rate=Decimal('5000.00'),  # Fixed rate
+                duration_months=12,  # Fixed to 1 year
+                monthly_rate=Decimal('8000.00'),  # Fixed rate of 8000
                 payment_status='pending'
             )
             

@@ -376,6 +376,7 @@ function processOrder() {
                 if (data.status === 'success') {
                     cart = [];
                     updateCartDisplay();
+                    printReceipt(data);
                     Swal.fire({
                         icon: 'success',
                         title: 'Success!',
@@ -394,6 +395,137 @@ function processOrder() {
             });
         }
     });
+}
+
+function printReceipt(transactionData) {
+    // Create a hidden iframe for printing
+    let printFrame = document.createElement('iframe');
+    printFrame.style.display = 'none';
+    document.body.appendChild(printFrame);
+    
+    // Generate receipt HTML with modified header
+    let receiptHTML = `
+        <html>
+        <head>
+            <style>
+                @page {
+                    margin: 0;
+                    padding: 0;
+                }
+                body {
+                    font-family: 'Courier New', monospace;
+                    font-size: 12px;
+                    width: 300px;
+                    margin: 0;
+                    padding: 10px;
+                }
+                .header {
+                    text-align: center;
+                    margin-bottom: 10px;
+                }
+                .divider {
+                    border-top: 1px dashed #000;
+                    margin: 5px 0;
+                }
+                .item {
+                    display: flex;
+                    justify-content: space-between;
+                    margin: 3px 0;
+                }
+                .addon {
+                    padding-left: 15px;
+                    font-size: 11px;
+                }
+                .total {
+                    font-weight: bold;
+                    margin-top: 10px;
+                }
+                .footer {
+                    text-align: center;
+                    margin-top: 10px;
+                    font-size: 11px;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <h2>${transactionData.stall_name}</h2>
+                <p>Transaction #: ${transactionData.transaction_id}</p>
+                <p>Date: ${new Date().toLocaleString()}</p>
+                <p>Cashier: ${transactionData.employee_name}</p>
+            </div>
+            <div class="divider"></div>
+            <div class="items">
+                ${transactionData.items.map(item => `
+                    <div class="item">
+                        <span>${item.quantity}x ${item.name}</span>
+                        <span>₱${(item.price * item.quantity).toFixed(2)}</span>
+                    </div>
+                    ${item.addOns ? item.addOns.map(addon => `
+                        <div class="addon">
+                            <span>${addon.quantity}x ${addon.name}</span>
+                            <span>₱${(addon.price * addon.quantity).toFixed(2)}</span>
+                        </div>
+                    `).join('') : ''}
+                `).join('')}
+            </div>
+            <div class="divider"></div>
+            <div class="total">
+                <div class="item">
+                    <span>Total Amount:</span>
+                    <span>₱${transactionData.total_amount.toFixed(2)}</span>
+                </div>
+                <div class="item">
+                    <span>Payment Method:</span>
+                    <span>${transactionData.payment_method}</span>
+                </div>
+            </div>
+            <div class="divider"></div>
+            <div class="footer">
+                <p>Thank you for your purchase!</p>
+                <p>Please come again</p>
+            </div>
+        </body>
+        </html>
+    `;
+
+    // Write receipt content to iframe and print
+    printFrame.contentDocument.write(receiptHTML);
+    printFrame.contentDocument.close();
+    
+    printFrame.onload = function() {
+        printFrame.contentWindow.print();
+        // Remove the iframe after printing
+        setTimeout(() => {
+            document.body.removeChild(printFrame);
+        }, 1000);
+    };
+}
+
+function handleOrderConfirmation(response) {
+    if (response.status === 'success') {
+        // Print receipt
+        printReceipt(response);
+        
+        // Show success message
+        Swal.fire({
+            icon: 'success',
+            title: 'Success!',
+            text: 'Order processed successfully',
+            timer: 2000,
+            showConfirmButton: false
+        }).then(() => {
+            // Clear cart and reset UI
+            clearCart();
+            updateCartDisplay();
+        });
+    } else {
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: response.message
+        });
+    }
 }
 </script>
 {% endblock %}

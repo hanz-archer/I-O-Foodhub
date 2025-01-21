@@ -15,7 +15,7 @@ from django.db.models import Q, Prefetch
 from django.utils import timezone
 from datetime import datetime, date
 from django.views.decorators.http import require_http_methods
-from .models import Category, Item, ItemAddOn, ItemSupply, Employee
+from .models import Category, Item, ItemAddOn, ItemSupply, Employee, TransactionReport
 from decimal import Decimal, InvalidOperation
 import json
 import random
@@ -492,80 +492,87 @@ def manage_suppliers(request):
     
     try:
         admin = AdminProfile.objects.get(id=admin_id)
-        
-        # Handle AJAX search request
-        if request.headers.get('X-Requested-With') == 'XMLHttpRequest' and request.GET.get('search'):
-            search_query = request.GET.get('search')
-            suppliers = Supplier.objects.filter(
-                stall=admin.stall
-            ).filter(
-                Q(firstname__icontains=search_query) |
-                Q(lastname__icontains=search_query) |
-                Q(license_number__icontains=search_query) |
-                Q(contact_number__icontains=search_query) |
-                Q(email_address__icontains=search_query)
-            )
-            
-            suppliers_data = [{
-                'id': supplier.id,
-                'firstname': supplier.firstname,
-                'middle_initial': supplier.middle_initial,
-                'lastname': supplier.lastname,
-                'license_number': supplier.license_number,
-                'contact_person': supplier.contact_person,
-                'contact_number': supplier.contact_number,
-                'email_address': supplier.email_address,
-                'contract_start_date': supplier.contract_start_date.strftime('%Y-%m-%d') if supplier.contract_start_date else '',
-                'contract_end_date': supplier.contract_end_date.strftime('%Y-%m-%d') if supplier.contract_end_date else ''
-            } for supplier in suppliers]
-            
-            return JsonResponse({
-                'status': 'success',
-                'suppliers': suppliers_data
-            })
+        today = date.today()
         
         if request.method == 'POST':
-            form = SupplierForm(request.POST)
-            if form.is_valid():
-                try:
-                    # Check if license number exists
-                    license_number = form.cleaned_data['license_number']
-                    if Supplier.objects.filter(stall=admin.stall, license_number=license_number).exists():
-                        return JsonResponse({
-                            'status': 'error',
-                            'message': 'License number already exists!'
-                        })
-                    
-                    supplier = form.save(commit=False)
-                    supplier.stall = admin.stall
-                    supplier.save()
-                    return JsonResponse({
-                        'status': 'success',
-                        'message': 'Supplier added successfully!'
-                    })
-                except ValidationError as e:
-                    return JsonResponse({
-                        'status': 'error',
-                        'message': str(e.messages[0])
-                    })
-            else:
-                errors = dict(form.errors.items())
+            # Create a mutable copy of POST data
+            post_data = request.POST.copy()
+            
+            # Ensure all required fields are present
+            required_fields = [
+                'firstname', 'lastname', 'contact_person', 'license_number',
+                'contact_number', 'email_address', 'address', 'contract_end_date'
+            ]
+            
+            # Check if all required fields are present
+            missing_fields = [field for field in required_fields if not post_data.get(field)]
+            if missing_fields:
                 return JsonResponse({
                     'status': 'error',
-                    'message': list(errors.values())[0][0]
+                    'message': f'Required field missing: {missing_fields[0]}'
                 })
-        else:
-            form = SupplierForm()
+            
+            try:
+                # Create new supplier instance
+                supplier = Supplier(
+                    stall=admin.stall,
+                    firstname=post_data['firstname'],
+                    middle_initial=post_data.get('middle_initial', ''),
+                    lastname=post_data['lastname'],
+                    contact_person=post_data['contact_person'],
+                    license_number=post_data['license_number'],
+                    contact_number=post_data['contact_number'],
+                    email_address=post_data['email_address'],
+                    address=post_data['address'],
+                    contract_end_date=post_data['contract_end_date']
+                )
+                
+                # Check if license number exists
+                if Supplier.objects.filter(license_number=supplier.license_number).exists():
+                    return JsonResponse({
+                        'status': 'error',
+                        'message': 'License number already exists!'
+                    })
+                
+                # Validate and save
+                supplier.full_clean()
+                supplier.save()
+                
+                return JsonResponse({
+                    'status': 'success',
+                    'message': 'Supplier added successfully!'
+                })
+                
+            except ValidationError as e:
+                error_message = str(e.message_dict[next(iter(e.message_dict))])
+                return JsonResponse({
+                    'status': 'error',
+                    'message': error_message
+                })
+            except Exception as e:
+                print("Error:", str(e))
+                return JsonResponse({
+                    'status': 'error',
+                    'message': str(e)
+                })
         
+        # Rest of your view code for GET requests...
         suppliers = Supplier.objects.filter(stall=admin.stall)
         return render(request, 'TriadApp/admin/manage_suppliers.html', {
-            'form': form,
             'suppliers': suppliers,
             'admin': admin,
-            'stall': admin.stall
+            'stall': admin.stall,
+            'today': today
         })
+        
     except AdminProfile.DoesNotExist:
         return redirect('login')
+    except Exception as e:
+        print("Unexpected Error:", str(e))
+        return JsonResponse({
+            'status': 'error',
+            'message': 'An unexpected error occurred'
+        })
     
 
 
@@ -581,41 +588,61 @@ def edit_supplier(request, supplier_id):
         supplier = get_object_or_404(Supplier, id=supplier_id, stall=admin.stall)
         
         if request.method == 'POST':
-            form = SupplierForm(request.POST, instance=supplier)
-            if form.is_valid():
-                try:
-                    # Get the submitted license number
-                    new_license = form.cleaned_data['license_number']
-                    
-                    # Check if it's different from the original
-                    if new_license != supplier.license_number:
-                        # Check if this license exists for any other supplier
-                        if Supplier.objects.filter(license_number=new_license).exclude(id=supplier_id).exists():
-                            return JsonResponse({
-                                'status': 'error',
-                                'message': 'This license number is already registered to another supplier.'
-                            })
-                    
-                    supplier = form.save()
-                    return JsonResponse({
-                        'status': 'success',
-                        'message': 'Supplier information updated successfully!'
-                    })
-                except ValidationError as e:
-                    return JsonResponse({
-                        'status': 'error',
-                        'message': str(e.messages[0])
-                    })
-                except IntegrityError:
-                    return JsonResponse({
-                        'status': 'error',
-                        'message': 'This license number is already registered to another supplier.'
-                    })
-            else:
-                errors = dict(form.errors.items())
+            # Create a mutable copy of POST data
+            post_data = request.POST.copy()
+            
+            try:
+                # Get the current and new license numbers
+                current_license = supplier.license_number
+                new_license = post_data.get('license_number', '').strip()
+                
+                # Print debug information
+                print(f"Current license: {current_license}")
+                print(f"New license: {new_license}")
+                print(f"Are they equal? {current_license == new_license}")
+                
+                # Update the supplier fields
+                supplier.firstname = post_data.get('firstname')
+                supplier.middle_initial = post_data.get('middle_initial')
+                supplier.lastname = post_data.get('lastname')
+                supplier.contact_person = post_data.get('contact_person')
+                supplier.contact_number = post_data.get('contact_number')
+                supplier.email_address = post_data.get('email_address')
+                supplier.address = post_data.get('address')
+                supplier.contract_end_date = post_data.get('contract_end_date')
+                
+                # Only check license if it's actually different (case-insensitive comparison)
+                if current_license.lower() != new_license.lower():
+                    if Supplier.objects.exclude(id=supplier_id).filter(license_number__iexact=new_license).exists():
+                        return JsonResponse({
+                            'status': 'error',
+                            'message': 'This license number is already registered to another supplier.'
+                        })
+                    supplier.license_number = new_license
+                else:
+                    # Keep the original license number
+                    print("Keeping original license number")
+                    supplier.license_number = current_license
+                
+                supplier.full_clean()  # Validate the model
+                supplier.save()
+                
+                return JsonResponse({
+                    'status': 'success',
+                    'message': 'Supplier information updated successfully!'
+                })
+                
+            except ValidationError as e:
+                print(f"Validation Error: {e}")
                 return JsonResponse({
                     'status': 'error',
-                    'message': list(errors.values())[0][0]
+                    'message': str(e.messages[0]) if hasattr(e, 'messages') else str(e)
+                })
+            except Exception as e:
+                print(f"Exception: {e}")
+                return JsonResponse({
+                    'status': 'error',
+                    'message': str(e)
                 })
         
         # For GET request, return supplier data
@@ -628,13 +655,18 @@ def edit_supplier(request, supplier_id):
             'contact_number': supplier.contact_number,
             'email_address': supplier.email_address,
             'license_number': supplier.license_number,
-            'contract_start_date': supplier.contract_start_date.strftime('%Y-%m-%d'),
             'contract_end_date': supplier.contract_end_date.strftime('%Y-%m-%d'),
         }
         return JsonResponse(data)
         
     except AdminProfile.DoesNotExist:
         return redirect('login')
+    except Exception as e:
+        print(f"Unexpected Error: {e}")
+        return JsonResponse({
+            'status': 'error',
+            'message': f'An unexpected error occurred: {str(e)}'
+        })
 
 
 @admin_required
@@ -664,6 +696,7 @@ def manage_supplies(request):
     
     try:
         admin = AdminProfile.objects.get(id=admin_id)
+        today = timezone.now().date()
         
         # Handle AJAX search request
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest' and request.GET.get('search'):
@@ -725,6 +758,12 @@ def manage_supplies(request):
                 # Get supplier instance
                 try:
                     supplier = Supplier.objects.get(id=supplier_id, stall=admin.stall)
+                    # Check if supplier contract is active
+                    if supplier.contract_end_date < today:
+                        return JsonResponse({
+                            'status': 'error',
+                            'message': 'Selected supplier\'s contract has expired!'
+                        })
                 except Supplier.DoesNotExist:
                     return JsonResponse({
                         'status': 'error',
@@ -756,10 +795,15 @@ def manage_supplies(request):
                 })
         
         supplies = Supply.objects.filter(stall=admin.stall)
-        suppliers = Supplier.objects.filter(stall=admin.stall)
+        # Only get active suppliers (contract not ended)
+        active_suppliers = Supplier.objects.filter(
+            stall=admin.stall,
+            contract_end_date__gte=today
+        )
+        
         return render(request, 'TriadApp/admin/supply_management.html', {
             'supplies': supplies,
-            'suppliers': suppliers,
+            'suppliers': active_suppliers,  # Pass only active suppliers
             'admin': admin,
             'stall': admin.stall
         })
@@ -1015,7 +1059,7 @@ def manage_inventory(request):
                     ).select_related('supply')
             )
         )
-        
+
         # Apply search if provided
         search_query = request.GET.get('search', '').strip()
         if search_query:
@@ -1052,8 +1096,22 @@ def add_item(request):
             with transaction.atomic():
                 admin = AdminProfile.objects.get(id=request.session.get('admin_id'))
                 
+                # Generate auto-increment item_id
+                last_item = Item.objects.filter(stall=admin.stall).order_by('-item_id').first()
+                if last_item:
+                    # Extract the numeric part and increment
+                    try:
+                        last_number = int(last_item.item_id[4:])  # Assuming format "ITEM1001"
+                        new_number = last_number + 1
+                    except ValueError:
+                        new_number = 1001
+                else:
+                    new_number = 1001
+                
+                # Format new item_id
+                item_id = f"ITEM{new_number}"
+                
                 # Get form data
-                item_id = request.POST.get('item_id')
                 name = request.POST.get('name')
                 category_id = request.POST.get('category')
                 price = request.POST.get('price')
@@ -1063,16 +1121,12 @@ def add_item(request):
                 expiration_date = request.POST.get('expiration_date') or None
                 picture = request.FILES.get('picture')
                 
-                # Check if item_id is unique within the stall
-                if Item.objects.filter(item_id=item_id, stall=admin.stall).exists():
-                    raise ValidationError("Item ID already exists in your stall. Please use a different ID.")
-                
                 # Get category instance
                 category = get_object_or_404(Category, id=category_id, stall=admin.stall)
                 
                 # Create item
                 item = Item.objects.create(
-                    item_id=item_id,
+                    item_id=item_id,  # Auto-generated item_id
                     stall=admin.stall,
                     name=name,
                     category=category,
@@ -1365,3 +1419,35 @@ def delete_item(request, item_id):
         'message': 'Invalid request method'
     })
     
+
+
+
+
+
+
+
+
+
+
+
+@admin_required
+def admin_reports(request):
+    try:
+        # Get the admin's profile
+        admin = AdminProfile.objects.get(id=request.session.get('admin_id'))
+        
+        # Get all reports from employees of this stall
+        reports = TransactionReport.objects.filter(
+            employee__stall=admin.stall
+        ).select_related('employee').order_by('-submitted_at')
+        
+        context = {
+            'reports': reports,
+            'admin': admin,
+            'stall': admin.stall
+        }
+        
+        return render(request, 'TriadApp/admin/reports.html', context)
+        
+    except AdminProfile.DoesNotExist:
+        return redirect('login')

@@ -124,13 +124,6 @@
                 {% csrf_token %}
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div class="mb-4">
-                        <label class="block text-gray-700 text-sm font-bold mb-2">Item ID*</label>
-                        <input type="text" name="item_id" 
-                               id="itemIdField"
-                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-100" 
-                               required>
-                    </div>
-                    <div class="mb-4">
                         <label class="block text-gray-700 text-sm font-bold mb-2">Name*</label>
                         <input type="text" name="name" 
                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500" 
@@ -287,11 +280,6 @@ document.addEventListener('DOMContentLoaded', function() {
         itemForm.reset();
         modalSubmitBtn.textContent = 'Add Item';
         
-        // Enable item_id field for new items
-        const itemIdField = document.getElementById('itemIdField');
-        itemIdField.removeAttribute('readonly');
-        itemIdField.classList.remove('bg-gray-100');
-        
         // Hide current picture container and make picture input required
         document.getElementById('currentPictureContainer').classList.add('hidden');
         document.getElementById('pictureInput').required = true;
@@ -374,11 +362,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     const data = response.data;
                     
                     // Set basic fields
-                    const itemIdField = document.getElementById('itemIdField');
-                    itemIdField.value = data.item_id;
-                    itemIdField.setAttribute('readonly', true);
-                    itemIdField.classList.add('bg-gray-100');
-                    
                     itemForm.elements['name'].value = data.name;
                     itemForm.elements['category'].value = data.category_id;
                     itemForm.elements['price'].value = data.price;
