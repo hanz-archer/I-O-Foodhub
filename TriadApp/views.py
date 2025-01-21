@@ -4,7 +4,7 @@ import pyrebase
 from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.contrib.auth.hashers import check_password
-from .models import AdminProfile, CustomUser, LoginHistory, Employee, Stall, Transaction
+from .models import AdminProfile, CustomUser, LoginHistory, Employee, Stall, Transaction, StallContract
 from django.contrib.auth import authenticate, login
 from .decorators import *
 from django.contrib.auth import logout
@@ -24,7 +24,7 @@ from django.core.cache import cache
 from datetime import datetime, timedelta
 from django.utils import timezone
 import time
-from django.db.models import Sum
+from django.db.models import Sum, Subquery, OuterRef
 from django.db.models.functions import Coalesce
 
 from django.http import HttpResponse
@@ -38,98 +38,34 @@ def index(request):
 def super_admin(request):
     try:
         super_admin = CustomUser.objects.get(id=request.user.id)
-        stalls = Stall.objects.filter(is_active=True)
-        today = timezone.now().date()
+        # Get only stalls, no relationships
+        stalls = Stall.objects.all()
         
-        # Initialize data structures
-        weekly_data = []
-        monthly_data = []
-        annual_data = []
-        
+        # Process stall data
+        stall_data = []
         for stall in stalls:
-            # Weekly Data
-            week_start = today - timedelta(days=today.weekday())
-            weekly_sales = Transaction.objects.filter(
-                stall=stall,
-                date__range=[week_start, today]
-            ).values('date').annotate(
-                daily_total=Sum('total_amount')
-            ).order_by('date')
-            
-            daily_totals = [0] * 7
-            for sale in weekly_sales:
-                day_index = (sale['date'] - week_start).days
-                daily_totals[day_index] = float(sale['daily_total'] or 0)
-            
-            weekly_data.append({
+            stall_info = {
+                'id': str(stall.store_id),
                 'name': stall.name,
-                'data': daily_totals
-            })
-
-            # Monthly Data
-            monthly_sales = Transaction.objects.filter(
-                stall=stall,
-                date__year=today.year
-            ).values('date__month').annotate(
-                monthly_total=Sum('total_amount')
-            ).order_by('date__month')
-            
-            monthly_totals = [0] * 12
-            for sale in monthly_sales:
-                month_index = sale['date__month'] - 1
-                monthly_totals[month_index] = float(sale['monthly_total'] or 0)
-            
-            monthly_data.append({
-                'name': stall.name,
-                'data': monthly_totals
-            })
-
-            # Annual Data (2020-2024)
-            annual_totals = []
-            for year in range(2020, today.year + 1):
-                year_total = Transaction.objects.filter(
-                    stall=stall,
-                    date__year=year
-                ).aggregate(
-                    total=Sum('total_amount')
-                )['total'] or 0
-                annual_totals.append(float(year_total))
-            
-            annual_data.append({
-                'name': stall.name,
-                'data': annual_totals
-            })
-
-        print("Transaction data loaded:")
-        print(f"Weekly data: {weekly_data}")
-        print(f"Monthly data: {monthly_data}")
-        print(f"Annual data: {annual_data}")
+                'logo_url': stall.logo.url if stall.logo else None,
+                'contact_number': stall.contact_number,
+                'is_active': stall.is_active
+            }
+            stall_data.append(stall_info)
 
         context = {
             'super_admin': super_admin,
-            'weekly_data': json.dumps(weekly_data),
-            'weekly_labels': json.dumps(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']),
-            'monthly_data': json.dumps(monthly_data),
-            'monthly_labels': json.dumps(['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']),
-            'annual_data': json.dumps(annual_data),
-            'annual_labels': json.dumps([str(year) for year in range(2020, today.year + 1)])
+            'stalls': stall_data,
+            'stalls_json': json.dumps(stall_data)
         }
         
         return render(request, 'TriadApp/superadmin/super_admin.html', context)
-        
     except Exception as e:
         print(f"Error in super_admin view: {str(e)}")
-        import traceback
-        traceback.print_exc()
         return render(request, 'TriadApp/superadmin/super_admin.html', {
             'super_admin': super_admin,
-            'error': 'An error occurred while loading the dashboard data.',
-            'weekly_data': '[]',
-            'weekly_labels': '[]',
-            'monthly_data': '[]',
-            'monthly_labels': '[]',
-            'annual_data': '[]',
-            'annual_labels': '[]'
+            'stalls': [],
+            'stalls_json': '[]'
         })
 
 

@@ -148,13 +148,23 @@
             formData.append('profile_image', fileInput.files[0]);
         }
         
+        // Show loading state
+        Swal.fire({
+            title: 'Updating...',
+            text: 'Please wait while we update your profile',
+            allowOutsideClick: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+
         fetch('/update_super_admin_profile/', {
             method: 'POST',
             body: formData,
             headers: {
                 'X-CSRFToken': '{{ csrf_token }}'
             },
-            credentials: 'same-origin'  // Important for CSRF
+            credentials: 'same-origin'
         })
         .then(response => response.json())
         .then(data => {
@@ -165,8 +175,13 @@
                     icon: 'success',
                     confirmButtonText: 'OK'
                 }).then(() => {
-                    // Reload the page to show updated information
-                    window.location.reload();
+                    if (formData.get('password')) {
+                        // If password was changed, redirect to login
+                        window.location.href = '/login/';
+                    } else {
+                        // Otherwise just reload the page
+                        window.location.reload();
+                    }
                 });
             } else {
                 Swal.fire({

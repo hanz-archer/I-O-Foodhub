@@ -14,7 +14,7 @@ from django.core.exceptions import ValidationError
 from django.contrib.auth import get_user_model
 import os
 import time
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from .models import StallContract, StallPayment
@@ -35,10 +35,10 @@ def update_super_admin_profile(request):
     if request.method == 'POST':
         try:
             user = request.user
+            data_updated = False
             
             # Handle profile image upload
             if 'profile_image' in request.FILES:
-                # Delete old image if it exists
                 if user.profile_image:
                     try:
                         old_image_path = user.profile_image.path
@@ -46,40 +46,54 @@ def update_super_admin_profile(request):
                             os.remove(old_image_path)
                     except Exception as e:
                         print(f"Error deleting old image: {e}")
-
-                # Save new image
+                
                 user.profile_image = request.FILES['profile_image']
-                user.save()
+                data_updated = True
 
-                # Return success with new image URL
-                return JsonResponse({
-                    'success': True,
-                    'message': 'Profile picture updated successfully!',
-                    'image_url': user.profile_image.url + f"?t={int(time.time())}"
-                })
-            
             # Handle other profile updates
-            if request.POST:
-                user.first_name = request.POST.get('firstname', user.first_name)
-                user.middle_name = request.POST.get('middle_name', user.middle_name)
-                user.last_name = request.POST.get('lastname', user.last_name)
-                user.email = request.POST.get('email', user.email)
-                user.username = request.POST.get('username', user.username)
-                user.gender = request.POST.get('gender', user.gender)
-                user.phone = request.POST.get('phone', user.phone)
-                user.address = request.POST.get('address', user.address)
-                
-                birthdate = request.POST.get('birthdate')
-                if birthdate:
+            fields_to_update = {
+                'first_name': 'firstname',
+                'middle_name': 'middle_name',
+                'last_name': 'lastname',
+                'email': 'email',
+                'username': 'username',
+                'gender': 'gender',
+                'phone': 'phone',
+                'address': 'address',
+            }
+
+            for model_field, post_field in fields_to_update.items():
+                if post_field in request.POST:
+                    setattr(user, model_field, request.POST.get(post_field))
+                    data_updated = True
+
+            # Handle birthdate separately
+            birthdate = request.POST.get('birthdate')
+            if birthdate:
+                try:
                     user.birthdate = birthdate
-                
+                    data_updated = True
+                except Exception as e:
+                    print(f"Error setting birthdate: {e}")
+
+            # Handle password if provided
+            new_password = request.POST.get('password')
+            if new_password:
+                user.set_password(new_password)
+                data_updated = True
+
+            if data_updated:
                 user.save()
-                
                 return JsonResponse({
                     'success': True,
                     'message': 'Profile updated successfully!'
                 })
-            
+            else:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'No changes detected'
+                })
+
         except Exception as e:
             print(f"Error in update_super_admin_profile: {str(e)}")
             return JsonResponse({
@@ -96,28 +110,31 @@ def update_super_admin_profile(request):
 
 @superuser_required
 def add_stall(request):
+    FIXED_MONTHLY_RATE = Decimal('5000.00')
+    
     if request.method == 'POST':
         try:
             with transaction.atomic():
-                # Create Stall
+                # Create Stall (inactive by default)
                 stall = Stall.objects.create(
                     name=request.POST.get('name'),
                     contact_number=request.POST.get('contact_number'),
                     logo=request.FILES.get('logo'),
-                    is_active=True  # Set active since contract will be created
+                    is_active=False  # Set as inactive until first payment
                 )
                 
-                # Create Contract
+                # Create Contract with fixed rate
                 contract = StallContract.objects.create(
                     stall=stall,
-                    start_date=request.POST.get('start_date'),
                     duration_months=int(request.POST.get('duration_months')),
-                    monthly_rate=Decimal(request.POST.get('monthly_rate'))
+                    monthly_rate=FIXED_MONTHLY_RATE,
+                    payment_status='pending'
+                    # Removed start_date since it's now nullable and will be set on first payment
                 )
                 
                 return JsonResponse({
                     'success': True,
-                    'message': 'Stall and contract created successfully',
+                    'message': 'Stall created successfully. It will be activated upon full payment.',
                     'redirect_url': reverse('manage_contracts')
                 })
                 
@@ -128,10 +145,8 @@ def add_stall(request):
                 'message': f"Error: {str(e)}"
             })
     
-    # Add stalls to context without ordering by created_at
     stalls = Stall.objects.all()
     context = {
-        'current_date': timezone.now().date(),
         'super_admin': request.user,
         'stalls': stalls
     }
@@ -223,7 +238,6 @@ def register_admin(request):
         address = request.POST.get('address')
         username = request.POST.get('username')
         email = request.POST.get('email')
-        password = request.POST.get('password')
         contact_number = request.POST.get('contact_number')
         stall_id = request.POST.get('stall')
 
@@ -254,7 +268,7 @@ def register_admin(request):
                 messages.error(request, f'Stall {stall.name} already has an admin assigned')
                 return redirect('register_admin')
             
-            hashed_password = make_password(password)
+            hashed_password = make_password(request.POST.get('password'))
             
             AdminProfile.objects.create(
                 firstname=firstname,
@@ -483,20 +497,37 @@ def add_stall_payment(request, store_id, contract_id):
 
 @superuser_required
 def manage_contracts(request):
-    # Get all contracts with their stalls and payments
-    contracts = StallContract.objects.all().select_related('stall').prefetch_related('payments')
-    # Get active stalls without contracts for the dropdown
-    stalls = Stall.objects.filter(is_active=True).exclude(
-        id__in=StallContract.objects.filter(
-            end_date__gte=timezone.now().date()
-        ).values('stall_id')
-    )
+    current_date = timezone.now().date()
+    
+    # Get all contracts
+    contracts = StallContract.objects.select_related('stall').all()
+    
+    # Process each contract to determine if it's active and handle expired contracts
+    for contract in contracts:
+        if not contract.start_date:
+            contract.status = 'pending'
+        else:
+            contract_end = contract.start_date + timedelta(days=contract.duration_months * 30)
+            if contract_end < current_date:
+                # Contract has expired
+                contract.status = 'expired'
+                contract.payment_status = 'expired'
+                contract.save()
+                
+                # Deactivate the stall
+                if contract.stall.is_active:
+                    contract.stall.is_active = False
+                    contract.stall.save()
+                    
+                # Send notification or log the expiration
+                # You might want to implement notification system here
+            else:
+                contract.status = 'active'
     
     context = {
         'contracts': contracts,
-        'stalls': stalls,
-        'current_date': timezone.now().date(),
-        'super_admin': request.user
+        'super_admin': request.user,
+        'current_date': current_date
     }
     return render(request, 'TriadApp/superadmin/contracts.html', context)
 
@@ -506,11 +537,16 @@ def add_stall_contract(request):
         try:
             stall_id = request.POST.get('stall')
             stall = get_object_or_404(Stall, store_id=stall_id)
+            current_date = timezone.now().date()
             
             # Check if stall already has an active contract
             existing_contract = StallContract.objects.filter(
                 stall=stall,
-                end_date__gte=timezone.now().date()
+                start_date__isnull=False  # Has started
+            ).filter(
+                Q(start_date__gt=current_date) |  # Future contract
+                Q(start_date__lte=current_date, 
+                  start_date__gt=current_date - timedelta(days=365*2))  # Active within 2 years
             ).first()
             
             if existing_contract:
@@ -519,23 +555,22 @@ def add_stall_contract(request):
                     'message': 'This stall already has an active contract'
                 })
             
-            start_date = request.POST.get('start_date')
             duration_months = int(request.POST.get('duration_months'))
-            monthly_rate = Decimal(request.POST.get('monthly_rate'))
+            monthly_rate = Decimal('5000.00')  # Fixed rate
             
-            # Validate start date
-            start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
-            if start_date < timezone.now().date():
+            # Validate duration
+            if duration_months not in [3, 6, 12, 24]:
                 return JsonResponse({
                     'status': 'error',
-                    'message': 'Start date cannot be in the past'
+                    'message': 'Invalid contract duration'
                 })
             
+            # Create contract without start_date
             contract = StallContract.objects.create(
                 stall=stall,
-                start_date=start_date,
                 duration_months=duration_months,
-                monthly_rate=monthly_rate
+                monthly_rate=monthly_rate,
+                payment_status='pending'
             )
             
             return JsonResponse({
@@ -580,41 +615,56 @@ def add_payment(request, contract_id):
         try:
             contract = get_object_or_404(StallContract, id=contract_id)
             
-            payment_date = datetime.strptime(request.POST.get('payment_date'), '%Y-%m-%d').date()
             amount = Decimal(request.POST.get('amount'))
-            payment_method = request.POST.get('payment_method')
-            payment_for_month = datetime.strptime(request.POST.get('payment_for_month'), '%Y-%m').date()
             notes = request.POST.get('notes', '')
             
-            # Validate payment date
-            if payment_date > timezone.now().date():
-                return JsonResponse({
-                    'status': 'error',
-                    'message': 'Payment date cannot be in the future'
-                })
+            # Calculate total amount and current total paid
+            total_amount = contract.total_amount
+            current_total_paid = sum(p.amount_paid for p in contract.payments.all())
+            remaining_balance = total_amount - current_total_paid
             
             # Validate payment amount
-            total_paid = sum(p.amount_paid for p in contract.payments.all())
-            remaining_balance = contract.total_amount - total_paid
-            
             if amount > remaining_balance:
                 return JsonResponse({
                     'status': 'error',
                     'message': f'Payment amount exceeds remaining balance (₱{remaining_balance})'
                 })
             
+            # Create the payment
             payment = StallPayment.objects.create(
                 contract=contract,
-                payment_date=payment_date,
                 amount_paid=amount,
-                payment_method=payment_method,
-                payment_for_month=payment_for_month,
                 notes=notes
             )
             
+            # Calculate new total paid after this payment
+            new_total_paid = current_total_paid + amount
+            
+            # If this is the first payment, set the contract start date
+            if not contract.start_date:
+                contract.start_date = timezone.now().date()
+                contract.save()
+            
+            # Check if fully paid
+            if new_total_paid >= total_amount:
+                # Activate the stall only when fully paid
+                contract.stall.is_active = True
+                contract.stall.save()
+                contract.payment_status = 'paid'
+                contract.save()
+                message = 'Payment recorded successfully. Contract fully paid and stall activated!'
+            else:
+                # Keep stall inactive and update remaining balance
+                contract.stall.is_active = False
+                contract.stall.save()
+                contract.payment_status = 'pending'
+                contract.save()
+                remaining = total_amount - new_total_paid
+                message = f'Payment recorded successfully. Remaining balance: ₱{remaining:,.2f}'
+            
             return JsonResponse({
                 'status': 'success',
-                'message': 'Payment recorded successfully',
+                'message': message,
                 'receipt_number': payment.receipt_number
             })
             
@@ -623,6 +673,43 @@ def add_payment(request, contract_id):
                 'status': 'error',
                 'message': 'Invalid input values'
             })
+        except Exception as e:
+            return JsonResponse({
+                'status': 'error',
+                'message': str(e)
+            })
+    
+    return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
+
+# Add a new view to handle contract renewal
+@superuser_required
+def renew_contract(request, contract_id):
+    if request.method == 'POST':
+        try:
+            old_contract = get_object_or_404(StallContract, id=contract_id)
+            duration_months = int(request.POST.get('duration_months'))
+            
+            # Validate duration
+            if duration_months not in [3, 6, 12, 24]:
+                return JsonResponse({
+                    'status': 'error',
+                    'message': 'Invalid contract duration'
+                })
+            
+            # Create new contract
+            new_contract = StallContract.objects.create(
+                stall=old_contract.stall,
+                duration_months=duration_months,
+                monthly_rate=Decimal('5000.00'),  # Fixed rate
+                payment_status='pending'
+            )
+            
+            return JsonResponse({
+                'status': 'success',
+                'message': 'Contract renewed successfully. Please make a payment to activate.',
+                'redirect_url': reverse('manage_contracts')
+            })
+            
         except Exception as e:
             return JsonResponse({
                 'status': 'error',

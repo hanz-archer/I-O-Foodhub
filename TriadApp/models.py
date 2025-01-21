@@ -11,7 +11,7 @@ import random
 import string
 from django.utils import timezone
 from dateutil.relativedelta import relativedelta
-from datetime import datetime
+from datetime import datetime, timedelta
 
 class Stall(models.Model):
     store_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
@@ -111,12 +111,19 @@ class Supplier(models.Model):
         return f"{self.firstname} {self.lastname} - {self.stall.name}"
 
 class Supply(models.Model):
+    STATUS_CHOICES = [
+        ('good', 'Good'),
+        ('expired', 'Expired')
+    ]
+    
     supply_id = models.CharField(max_length=50)
     name = models.CharField(max_length=255)
     description = models.CharField(max_length=50, blank=True, null=True)
     quantity = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     cost = models.DecimalField(max_digits=10, decimal_places=2)
     date_added = models.DateField()
+    expiration_date = models.DateField(null=True, blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='good')
     stall = models.ForeignKey('Stall', on_delete=models.CASCADE, related_name='supplies', to_field='store_id')
     supplier = models.ForeignKey('Supplier', on_delete=models.CASCADE, related_name='supplies')
     supplier_name = models.CharField(max_length=255, null=True, blank=True)
@@ -125,6 +132,14 @@ class Supply(models.Model):
 
     class Meta:
         unique_together = ['supply_id', 'stall']
+        
+    def save(self, *args, **kwargs):
+        # Update status based on expiration date
+        if self.expiration_date:
+            today = timezone.now().date()
+            self.status = 'expired' if self.expiration_date <= today else 'good'
+            
+        super().save(*args, **kwargs)
         
     def __str__(self):
         supplier_info = f" ({self.supplier_name})" if self.supplier_name else ""
@@ -404,64 +419,40 @@ class TransactionItemAddOn(models.Model):
 
 class StallContract(models.Model):
     PAYMENT_STATUS = [
-        ('paid', 'Paid'),
         ('pending', 'Pending'),
+        ('paid', 'Paid'),
         ('overdue', 'Overdue')
     ]
     
-    CONTRACT_DURATION = [
-        (6, '6 Months'),
-        (12, '1 Year'),
-        (24, '2 Years'),
-    ]
-    
     stall = models.ForeignKey(Stall, on_delete=models.CASCADE, related_name='contracts')
-    start_date = models.DateField()
-    end_date = models.DateField()
+    start_date = models.DateField(null=True, blank=True)  # Allow null for initial creation
+    duration_months = models.IntegerField()
     monthly_rate = models.DecimalField(max_digits=10, decimal_places=2)
-    duration_months = models.IntegerField(choices=CONTRACT_DURATION)
-    payment_status = models.CharField(max_length=10, choices=PAYMENT_STATUS, default='pending')
+    payment_status = models.CharField(max_length=20, choices=PAYMENT_STATUS, default='pending')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
-    def save(self, *args, **kwargs):
-        # Calculate end_date based on start_date and duration
-        if not self.end_date:
-            end_date = datetime.strptime(str(self.start_date), '%Y-%m-%d')
-            self.end_date = (end_date + relativedelta(months=self.duration_months)).date()
-        
-        # Update stall status based on payment and end date
-        if self.payment_status == 'paid' and self.end_date >= timezone.now().date():
-            self.stall.is_active = True
-        else:
-            self.stall.is_active = False
-        self.stall.save()
-        
-        super().save(*args, **kwargs)
-    
-    def __str__(self):
-        return f"{self.stall.name} - Contract ({self.start_date} to {self.end_date})"
-    
-    class Meta:
-        ordering = ['-start_date']
+
+    @property
+    def end_date(self):
+        if not self.start_date:
+            return None
+        return self.start_date + timedelta(days=self.duration_months * 30)
 
     @property
     def total_amount(self):
         return self.monthly_rate * self.duration_months
 
+    def __str__(self):
+        status = f"(Not Started)" if not self.start_date else f"({self.start_date} to {self.end_date})"
+        return f"{self.stall.name}'s Contract {status}"
+
+    class Meta:
+        ordering = ['-created_at']
+
 class StallPayment(models.Model):
-    PAYMENT_METHOD = [
-        ('cash', 'Cash'),
-        ('bank', 'Bank Transfer'),
-        ('gcash', 'GCash'),
-        ('maya', 'Maya')
-    ]
-    
     contract = models.ForeignKey(StallContract, on_delete=models.CASCADE, related_name='payments')
-    payment_date = models.DateField()
+    payment_date = models.DateField(auto_now_add=True)  # Automatically set to current date
     amount_paid = models.DecimalField(max_digits=10, decimal_places=2)
-    payment_method = models.CharField(max_length=10, choices=PAYMENT_METHOD)
-    payment_for_month = models.DateField()  # The month this payment is for
     receipt_number = models.CharField(max_length=50, unique=True)
     notes = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)

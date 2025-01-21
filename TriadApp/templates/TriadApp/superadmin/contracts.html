@@ -4,13 +4,7 @@
 {% block content %}
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <div class="container mx-auto px-4 py-8">
-    <div class="flex justify-between items-center mb-6">
-        <h1 class="text-2xl font-bold">Contract Management</h1>
-        <button onclick="showAddContractModal()" 
-                class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
-            Create New Contract
-        </button>
-    </div>
+  
 
     <!-- Search and Filter -->
     <div class="mb-6 flex gap-4">
@@ -60,23 +54,29 @@
                     <td class="px-6 py-4 whitespace-nowrap">
                         <div class="text-sm text-gray-900">₱{{ contract.monthly_rate }}</div>
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
-                            {% if contract.payment_status == 'paid' %}
-                                bg-green-100 text-green-800
-                            {% elif contract.payment_status == 'pending' %}
-                                bg-yellow-100 text-yellow-800
-                            {% else %}
-                                bg-red-100 text-red-800
-                            {% endif %}">
-                            {{ contract.payment_status|title }}
-                        </span>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {% if contract.status == 'expired' %}
+                            <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+                                Expired
+                            </span>
+                            <button onclick="showRenewModal('{{ contract.id }}')" 
+                                    class="ml-2 bg-green-500 hover:bg-green-700 text-white font-bold py-1 px-3 rounded text-xs">
+                                Renew
+                            </button>
+                        {% elif contract.status == 'active' %}
+                            <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                Active
+                            </span>
+                        {% else %}
+                            <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                                Pending
+                            </span>
+                        {% endif %}
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <a href="{% url 'contract_details' contract.id %}" 
                            class="text-blue-600 hover:text-blue-900 mr-3">View</a>
-                        <button onclick="showPaymentModal('{{ contract.id }}')"
-                                class="text-green-600 hover:text-green-900">Add Payment</button>
+                        
                     </td>
                 </tr>
                 {% empty %}
@@ -91,100 +91,35 @@
     </div>
 </div>
 
-<!-- Add Contract Modal -->
-<div id="contractModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden overflow-y-auto h-full w-full">
+<!-- Add Renewal Modal -->
+<div id="renewModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden overflow-y-auto h-full w-full">
     <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-        <h3 class="text-lg font-medium leading-6 text-gray-900 mb-4">Create New Contract</h3>
-        <form id="contractForm">
+        <h3 class="text-lg font-medium leading-6 text-gray-900 mb-4">Renew Contract</h3>
+        <form id="renewForm">
+            <input type="hidden" id="renewContractId" name="contract_id">
             <div class="space-y-4">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700">Select Stall</label>
-                    <select name="stall" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
-                        {% for stall in stalls %}
-                        <option value="{{ stall.store_id }}">{{ stall.name }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Start Date</label>
-                    <input type="date" name="start_date" required 
-                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Duration</label>
+                    <label class="block text-sm font-medium text-gray-700">Contract Duration</label>
                     <select name="duration_months" required 
                             class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                        <option value="3">3 Months</option>
                         <option value="6">6 Months</option>
                         <option value="12">1 Year</option>
                         <option value="24">2 Years</option>
                     </select>
                 </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Monthly Rate</label>
-                    <input type="number" name="monthly_rate" required step="0.01"
-                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                <div class="text-sm text-gray-600">
+                    Monthly Rate: ₱5,000.00 (Fixed)
                 </div>
             </div>
             <div class="mt-6 flex justify-end gap-3">
-                <button type="button" onclick="closeContractModal()"
-                        class="bg-gray-200 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-300">
-                    Cancel
-                </button>
-                <button type="submit"
-                        class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-700">
-                    Create Contract
-                </button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<!-- Add Payment Modal -->
-<div id="paymentModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden overflow-y-auto h-full w-full">
-    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-        <h3 class="text-lg font-medium leading-6 text-gray-900 mb-4">Add Payment</h3>
-        <form id="paymentForm">
-            <input type="hidden" id="contractId" name="contract_id">
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Payment Date</label>
-                    <input type="date" name="payment_date" required 
-                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Amount</label>
-                    <input type="number" name="amount" required step="0.01"
-                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Payment Method</label>
-                    <select name="payment_method" required 
-                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
-                        <option value="cash">Cash</option>
-                        <option value="bank">Bank Transfer</option>
-                        <option value="gcash">GCash</option>
-                        <option value="maya">Maya</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Payment For Month</label>
-                    <input type="month" name="payment_for_month" required 
-                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Notes</label>
-                    <textarea name="notes" rows="2"
-                              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"></textarea>
-                </div>
-            </div>
-            <div class="mt-6 flex justify-end gap-3">
-                <button type="button" onclick="closePaymentModal()"
+                <button type="button" onclick="closeRenewModal()"
                         class="bg-gray-200 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-300">
                     Cancel
                 </button>
                 <button type="submit"
                         class="bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-700">
-                    Submit Payment
+                    Renew Contract
                 </button>
             </div>
         </form>
@@ -192,106 +127,185 @@
 </div>
 
 <script>
-// Modal Functions
+// Wait for DOM to be fully loaded
+document.addEventListener('DOMContentLoaded', function() {
+    // Search and Filter
+    const searchInput = document.getElementById('searchInput');
+    const statusFilter = document.getElementById('statusFilter');
+
+    if (searchInput) {
+        searchInput.addEventListener('input', filterTable);
+    }
+    
+    if (statusFilter) {
+        statusFilter.addEventListener('change', filterTable);
+    }
+
+    function filterTable() {
+        const searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
+        const statusFilter = statusFilter ? statusFilter.value.toLowerCase() : '';
+        const rows = document.querySelectorAll('tbody tr');
+
+        rows.forEach(row => {
+            const stallName = row.querySelector('td:first-child').textContent.toLowerCase();
+            const status = row.querySelector('td:nth-child(4)').textContent.toLowerCase();
+            
+            const matchesSearch = stallName.includes(searchTerm);
+            const matchesStatus = !statusFilter || status.includes(statusFilter);
+            
+            row.style.display = matchesSearch && matchesStatus ? '' : 'none';
+        });
+    }
+
+    // Calculate total amount when duration changes
+    const durationSelect = document.getElementById('duration_months');
+    if (durationSelect) {
+        durationSelect.addEventListener('change', function() {
+            const duration = parseInt(this.value);
+            const monthlyRate = 5000; // Fixed rate
+            const total = duration * monthlyRate;
+            const totalElement = document.getElementById('total_amount');
+            if (totalElement) {
+                totalElement.textContent = `Total Amount: ₱${total.toLocaleString('en-US', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                })}`;
+            }
+        });
+
+        // Calculate initial total
+        durationSelect.dispatchEvent(new Event('change'));
+    }
+});
+
+// Modal functions
 function showAddContractModal() {
-    document.getElementById('contractModal').classList.remove('hidden');
+    const modal = document.getElementById('addContractModal');
+    if (modal) {
+        modal.classList.remove('hidden');
+    }
 }
 
-function closeContractModal() {
-    document.getElementById('contractModal').classList.add('hidden');
+function closeAddContractModal() {
+    const modal = document.getElementById('addContractModal');
+    if (modal) {
+        modal.classList.add('hidden');
+    }
 }
 
 function showPaymentModal(contractId) {
-    document.getElementById('contractId').value = contractId;
-    document.getElementById('paymentModal').classList.remove('hidden');
+    const modal = document.getElementById('paymentModal');
+    const contractIdInput = document.getElementById('contractId');
+    if (modal && contractIdInput) {
+        contractIdInput.value = contractId;
+        modal.classList.remove('hidden');
+    }
 }
 
 function closePaymentModal() {
-    document.getElementById('paymentModal').classList.add('hidden');
+    const modal = document.getElementById('paymentModal');
+    if (modal) {
+        modal.classList.add('hidden');
+    }
 }
 
-// Form Submissions
-document.getElementById('contractForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-    const formData = new FormData(this);
-    
-    fetch('{% url "add_stall_contract" %}', {
-        method: 'POST',
-        body: formData,
-        headers: {
-            'X-CSRFToken': '{{ csrf_token }}'
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.status === 'success') {
-            Swal.fire({
-                icon: 'success',
-                title: 'Success!',
-                text: data.message
-            }).then(() => {
-                location.reload();
+// Form submission handlers
+document.addEventListener('DOMContentLoaded', function() {
+    const addContractForm = document.getElementById('addContractForm');
+    if (addContractForm) {
+        addContractForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            // Your existing form submission code
+        });
+    }
+
+    const paymentForm = document.getElementById('paymentForm');
+    if (paymentForm) {
+        paymentForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            const contractId = document.getElementById('contractId').value;
+            
+            fetch(`/superadmin/contracts/${contractId}/add-payment/`, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Success!',
+                        text: data.message
+                    }).then(() => {
+                        location.reload();
+                    });
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error!',
+                        text: data.message
+                    });
+                }
             });
-        } else {
-            Swal.fire({
-                icon: 'error',
-                title: 'Error!',
-                text: data.message
-            });
-        }
-    });
+        });
+    }
 });
 
-document.getElementById('paymentForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-    const formData = new FormData(this);
-    const contractId = document.getElementById('contractId').value;
-    
-    fetch(`{% url 'add_payment' 0 %}`.replace('0', contractId), {
-        method: 'POST',
-        body: formData,
-        headers: {
-            'X-CSRFToken': '{{ csrf_token }}'
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.status === 'success') {
-            Swal.fire({
-                icon: 'success',
-                title: 'Success!',
-                text: data.message
-            }).then(() => {
-                location.reload();
-            });
-        } else {
-            Swal.fire({
-                icon: 'error',
-                title: 'Error!',
-                text: data.message
-            });
-        }
-    });
-});
-
-// Search and Filter
-document.getElementById('searchInput').addEventListener('input', filterTable);
-document.getElementById('statusFilter').addEventListener('change', filterTable);
-
-function filterTable() {
-    const searchTerm = document.getElementById('searchInput').value.toLowerCase();
-    const statusFilter = document.getElementById('statusFilter').value.toLowerCase();
-    const rows = document.querySelectorAll('tbody tr');
-
-    rows.forEach(row => {
-        const stallName = row.querySelector('td:first-child').textContent.toLowerCase();
-        const status = row.querySelector('td:nth-child(4)').textContent.toLowerCase();
-        
-        const matchesSearch = stallName.includes(searchTerm);
-        const matchesStatus = !statusFilter || status.includes(statusFilter);
-        
-        row.style.display = matchesSearch && matchesStatus ? '' : 'none';
-    });
+function showRenewModal(contractId) {
+    const modal = document.getElementById('renewModal');
+    const contractIdInput = document.getElementById('renewContractId');
+    if (modal && contractIdInput) {
+        contractIdInput.value = contractId;
+        modal.classList.remove('hidden');
+    }
 }
+
+function closeRenewModal() {
+    const modal = document.getElementById('renewModal');
+    if (modal) {
+        modal.classList.add('hidden');
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const renewForm = document.getElementById('renewForm');
+    if (renewForm) {
+        renewForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            const contractId = document.getElementById('renewContractId').value;
+            
+            fetch(`/superadmin/contracts/${contractId}/renew/`, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Success!',
+                        text: data.message
+                    }).then(() => {
+                        location.reload();
+                    });
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error!',
+                        text: data.message
+                    });
+                }
+            });
+        });
+    }
+});
 </script>
 {% endblock %} 

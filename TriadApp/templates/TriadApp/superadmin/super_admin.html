@@ -8,6 +8,7 @@
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.16/dist/tailwind.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
     <link href="https://fonts.googleapis.com/css?family=Poppins:600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
         * {
             font-family: 'Poppins', sans-serif;
@@ -104,172 +105,118 @@
         </div>
 
         <div id="mainContent" class="flex-1 ml-64 p-6">
-            <!-- Main content without any toggle button -->
             {% block content %}
-            <div class="p-6">
-                <h1 class="text-3xl font-bold text-gray-800 mb-8 text-center">Sales Data Dashboard</h1>
-                
-                <!-- Charts Grid - Changed to stack vertically -->
-                <div class="grid grid-cols-1 gap-6 max-w-4xl mx-auto">
-                    <!-- Weekly Sales Chart -->
-                    <div class="bg-white p-6 rounded-lg shadow-lg">
-                        <h2 class="text-xl font-semibold mb-4">Weekly Sales by Stall</h2>
-                        <div id="weeklyChart"></div>
+            <div class="container mx-auto px-4 py-8">
+                <div class="mb-8">
+                    <h1 class="text-3xl font-bold text-gray-800">Welcome, {{super_admin.first_name}} {{super_admin.middle_name}} {{super_admin.last_name}} !</h1>
+                    <p class="text-gray-600">Manage your food court stalls</p>
+                </div>
+            
+                <!-- Stalls Grid -->
+                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+                    {% for stall in stalls %}
+                    <div class="cursor-pointer" onclick="showStallDetails('{{ stall.id }}')">
+                        <div class="relative group">
+                            <!-- Fixed size container -->
+                            <div class="w-40 h-40 mx-auto rounded-full overflow-hidden border-4 
+                                {% if stall.is_active %}border-green-500{% else %}border-red-500{% endif %} 
+                                transition-transform transform group-hover:scale-105 shadow-lg">
+                                {% if stall.logo_url %}
+                                    <img src="{{ stall.logo_url }}" 
+                                         alt="{{ stall.name }}" 
+                                         class="w-full h-full object-cover">
+                                {% else %}
+                                    <div class="w-full h-full bg-gray-200 flex items-center justify-center">
+                                        <span class="text-gray-500 text-3xl">{{ stall.name|first }}</span>
+                                    </div>
+                                {% endif %}
+                            </div>
+                            
+                            <!-- Status Indicator -->
+                            <div class="absolute -bottom-2 left-1/2 transform -translate-x-1/2 px-3 py-1 rounded-full text-xs font-semibold
+                                {% if stall.is_active %}
+                                    bg-green-100 text-green-800
+                                {% else %}
+                                    bg-red-100 text-red-800
+                                {% endif %}">
+                                {{ stall.is_active|yesno:"Active,Inactive" }}
+                            </div>
+                        </div>
+                        
+                        <h3 class="mt-4 text-center font-semibold text-gray-800">{{ stall.name }}</h3>
                     </div>
-
-                    <!-- Monthly Sales Chart -->
-                    <div class="bg-white p-6 rounded-lg shadow-lg">
-                        <h2 class="text-xl font-semibold mb-4">Monthly Sales</h2>
-                        <div id="monthlyChart"></div>
+                    {% empty %}
+                    <div class="col-span-full text-center py-8">
+                        <p class="text-gray-500">No stalls available</p>
                     </div>
-
-                    <!-- Annual Sales Chart -->
-                    <div class="bg-white p-6 rounded-lg shadow-lg">
-                        <h2 class="text-xl font-semibold mb-4">Annual Sales</h2>
-                        <div id="annualChart"></div>
-                    </div>
+                    {% endfor %}
+                    
+               
                 </div>
             </div>
-
-            <!-- Add charts initialization script -->
-            <script>
-                try {
-                    // Parse all JSON data consistently
-                    const weeklyData = JSON.parse('{{ weekly_data|escapejs }}');
-                    const weeklyLabels = JSON.parse('{{ weekly_labels|escapejs }}');
-                    const monthlyData = JSON.parse('{{ monthly_data|escapejs }}');
-                    const monthlyLabels = JSON.parse('{{ monthly_labels|escapejs }}');
-                    const annualData = JSON.parse('{{ annual_data|escapejs }}');
-                    const annualLabels = JSON.parse('{{ annual_labels|escapejs }}');
-
-                    console.log('Weekly Data:', weeklyData);
-                    console.log('Monthly Data:', monthlyData);
-                    console.log('Annual Data:', annualData);
-
-                    // Weekly Sales Chart
-                    const weeklyOptions = {
-                        series: weeklyData,
-                        chart: {
-                            type: 'bar',
-                            height: 350,
-                            stacked: true,
-                            toolbar: {
-                                show: true
-                            },
-                        },
-                        plotOptions: {
-                            bar: {
-                                horizontal: false,
-                                columnWidth: '55%',
-                                endingShape: 'rounded'
-                            },
-                        },
-                        xaxis: {
-                            categories: weeklyLabels,
-                        },
-                        yaxis: {
-                            title: {
-                                text: 'Sales (₱)'
-                            }
-                        },
-                        legend: {
-                            position: 'top'
-                        },
-                        fill: {
-                            opacity: 1
-                        }
-                    };
-
-                    // Monthly Sales Chart
-                    const monthlyOptions = {
-                        series: monthlyData,
-                        chart: {
-                            height: 350,
-                            type: 'line',
-                            zoom: {
-                                enabled: false
-                            }
-                        },
-                        stroke: {
-                            curve: 'smooth'
-                        },
-                        xaxis: {
-                            categories: monthlyLabels
-                        },
-                        yaxis: {
-                            title: {
-                                text: 'Sales (₱)'
-                            }
-                        },
-                        title: {
-                            text: '2024 Monthly Sales Trend',
-                            align: 'left'
-                        }
-                    };
-
-                    // Annual Sales Chart
-                    const annualOptions = {
-                        series: annualData,
-                        chart: {
-                            height: 350,
-                            type: 'area',
-                            zoom: {
-                                enabled: false
-                            }
-                        },
-                        dataLabels: {
-                            enabled: false
-                        },
-                        stroke: {
-                            curve: 'smooth'
-                        },
-                        xaxis: {
-                            categories: annualLabels
-                        },
-                        yaxis: {
-                            title: {
-                                text: 'Sales (₱)'
-                            }
-                        },
-                        title: {
-                            text: 'Annual Sales Growth',
-                            align: 'left'
-                        },
-                        fill: {
-                            type: 'gradient',
-                            gradient: {
-                                shadeIntensity: 1,
-                                opacityFrom: 0.7,
-                                opacityTo: 0.9,
-                                stops: [0, 90, 100]
-                            }
-                        }
-                    };
-
-                    // Only render charts if data exists
-                    if (weeklyData.length > 0) {
-                        const weeklyChart = new ApexCharts(document.querySelector("#weeklyChart"), weeklyOptions);
-                        weeklyChart.render();
-                    }
-
-                    if (monthlyData.length > 0) {
-                        const monthlyChart = new ApexCharts(document.querySelector("#monthlyChart"), monthlyOptions);
-                        monthlyChart.render();
-                    }
-
-                    if (annualData.length > 0) {
-                        const annualChart = new ApexCharts(document.querySelector("#annualChart"), annualOptions);
-                        annualChart.render();
-                    }
-                } catch (error) {
-                    console.error('Error initializing charts:', error);
-                }
-            </script>
             {% endblock %}
-        </div>
-    </div>
-
-    <!-- Add toggle script before closing body tag -->
+            <script>
+            function showStallDetails(stallId) {
+                try {
+                    const stallData = JSON.parse('{{ stalls_json|escapejs }}');
+                    const stall = stallData.find(s => s.id === stallId);
+                    if (!stall) {
+                        console.error('Stall not found:', stallId);
+                        return;
+                    }
+        
+                    Swal.fire({
+                        title: stall.name,
+                        html: `
+                            <div class="space-y-4">
+                                <div class="flex items-center justify-center space-x-4">
+                                    <div class="w-40 h-40 rounded-full overflow-hidden border-2 border-gray-200">
+                                        ${stall.logo_url ? 
+                                            `<img src="${stall.logo_url}" alt="${stall.name}" class="w-full h-full object-cover">` :
+                                            `<div class="w-full h-full bg-gray-200 flex items-center justify-center">
+                                                <span class="text-gray-500 text-3xl">No Logo</span>
+                                            </div>`
+                                        }
+                                    </div>
+                                    <div class="text-left">
+                                        <p class="text-sm text-gray-600">Contact Number</p>
+                                        <p class="font-medium">${stall.contact_number}</p>
+                                        <p class="mt-2">
+                                            <span class="px-3 py-1 rounded-full text-sm font-semibold ${
+                                                stall.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                                            }">
+                                                ${stall.is_active ? 'Active' : 'Inactive'}
+                                            </span>
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        `,
+                        showCloseButton: true,
+                        showConfirmButton: false,
+                        width: '32rem',
+                        customClass: {
+                            container: 'swal-custom',
+                            popup: 'rounded-lg',
+                            content: 'text-left'
+                        }
+                    });
+                } catch (e) {
+                    console.error('Error showing stall details:', e);
+                }
+            }
+        
+            function closeModalOnOutsideClick(event) {
+                if (event.target.id === 'stallDetailsModal') {
+                    closeStallDetails();
+                }
+            }
+        
+            function closeStallDetails() {
+                document.getElementById('stallDetailsModal').classList.add('hidden');
+            }
+            </script>
+                <!-- Add toggle script before closing body tag -->
     <script>
         const sidebarToggle = document.getElementById('sidebarToggle');
         const sidebar = document.getElementById('sidebar');

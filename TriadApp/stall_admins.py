@@ -11,7 +11,7 @@ from django.urls import reverse
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import Q, Prefetch
 from django.utils import timezone
 from datetime import datetime, date
 from django.views.decorators.http import require_http_methods
@@ -686,6 +686,8 @@ def manage_supplies(request):
                 'quantity': supply.quantity,
                 'cost': str(supply.cost),
                 'date_added': supply.date_added.strftime('%Y-%m-%d'),
+                'expiration_date': supply.expiration_date.strftime('%Y-%m-%d') if supply.expiration_date else '',
+                'status': supply.status,
                 'supplier_name': f"{supply.supplier.firstname} {supply.supplier.lastname}"
             } for supply in supplies]
             
@@ -704,12 +706,13 @@ def manage_supplies(request):
                 cost = request.POST.get('cost')
                 supplier_id = request.POST.get('supplier')
                 date_added = request.POST.get('date_added', timezone.now().date().isoformat())
+                expiration_date = request.POST.get('expiration_date')
 
                 # Validation
-                if not all([supply_id, name, cost, supplier_id]):
+                if not all([supply_id, name, cost, supplier_id, expiration_date]):
                     return JsonResponse({
                         'status': 'error',
-                        'message': 'Please fill in all required fields!'
+                        'message': 'Please fill in all required fields including expiration date!'
                     })
 
                 # Check if supply_id exists
@@ -728,7 +731,7 @@ def manage_supplies(request):
                         'message': 'Invalid supplier selected!'
                     })
 
-                # Create supply without category
+                # Create supply
                 supply = Supply.objects.create(
                     supply_id=supply_id,
                     name=name,
@@ -737,6 +740,7 @@ def manage_supplies(request):
                     cost=cost,
                     supplier=supplier,
                     date_added=datetime.strptime(date_added, '%Y-%m-%d').date(),
+                    expiration_date=datetime.strptime(expiration_date, '%Y-%m-%d').date(),
                     stall=admin.stall
                 )
 
@@ -752,7 +756,7 @@ def manage_supplies(request):
                 })
         
         supplies = Supply.objects.filter(stall=admin.stall)
-        suppliers = Supplier.objects.filter(stall=admin.stall)  # For supplier dropdown
+        suppliers = Supplier.objects.filter(stall=admin.stall)
         return render(request, 'TriadApp/admin/supply_management.html', {
             'supplies': supplies,
             'suppliers': suppliers,
@@ -783,6 +787,13 @@ def edit_supply(request, supply_id):
                 cost = request.POST.get('cost')
                 supplier_id = request.POST.get('supplier')
                 date_added = request.POST.get('date_added')
+                expiration_date = request.POST.get('expiration_date')
+                
+                if not expiration_date:
+                    return JsonResponse({
+                        'status': 'error',
+                        'message': 'Expiration date is required!'
+                    })
                 
                 # Get supplier instance
                 supplier = get_object_or_404(Supplier, id=supplier_id, stall=admin.stall)
@@ -794,7 +805,8 @@ def edit_supply(request, supply_id):
                 supply.cost = cost
                 supply.supplier = supplier
                 supply.date_added = datetime.strptime(date_added, '%Y-%m-%d').date()
-                supply.save()
+                supply.expiration_date = datetime.strptime(expiration_date, '%Y-%m-%d').date()
+                supply.save()  # This will automatically update the status based on expiration date
                 
                 return JsonResponse({
                     'status': 'success',
@@ -819,6 +831,8 @@ def edit_supply(request, supply_id):
                     'cost': str(supply.cost),
                     'supplier': supply.supplier.id,
                     'date_added': supply.date_added.strftime('%Y-%m-%d'),
+                    'expiration_date': supply.expiration_date.strftime('%Y-%m-%d') if supply.expiration_date else '',
+                    'status': supply.status
                 }
             }
             return JsonResponse(data)
@@ -828,16 +842,6 @@ def edit_supply(request, supply_id):
                 'message': f'Error loading supply data: {str(e)}'
             })
         
-    except AdminProfile.DoesNotExist:
-        return JsonResponse({
-            'status': 'error',
-            'message': 'Admin profile not found'
-        })
-    except Supply.DoesNotExist:
-        return JsonResponse({
-            'status': 'error',
-            'message': 'Supply not found'
-        })
     except Exception as e:
         return JsonResponse({
             'status': 'error',
@@ -997,10 +1001,19 @@ def manage_inventory(request):
     try:
         admin = AdminProfile.objects.get(id=request.session.get('admin_id'))
         
-        # Base queryset with prefetch_related
+        # Get only non-expired supplies
+        valid_supplies = Supply.objects.filter(
+            stall=admin.stall,
+            status='good'  # Only get supplies with 'good' status
+        )
+        
+        # Base queryset with prefetch_related, filtering for non-expired supplies
         items = Item.objects.filter(stall=admin.stall).prefetch_related(
-            'item_supplies',
-            'item_supplies__supply'
+            Prefetch('item_supplies',
+                    queryset=ItemSupply.objects.filter(
+                        supply__status='good'  # Only include non-expired supplies
+                    ).select_related('supply')
+            )
         )
         
         # Apply search if provided
@@ -1018,12 +1031,11 @@ def manage_inventory(request):
             items = items.filter(category__name=category_filter)
         
         categories = Category.objects.filter(stall=admin.stall)
-        supplies = Supply.objects.filter(stall=admin.stall)
         
         return render(request, 'TriadApp/admin/inventory_management.html', {
             'items': items,
             'categories': categories,
-            'supplies': supplies,
+            'supplies': valid_supplies,  # Only pass non-expired supplies
             'admin': admin,
             'stall': admin.stall,
             'search_query': search_query,

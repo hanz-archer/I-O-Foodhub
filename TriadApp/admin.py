@@ -379,11 +379,25 @@ class StallContractAdmin(admin.ModelAdmin):
 
 @admin.register(StallPayment)
 class StallPaymentAdmin(admin.ModelAdmin):
-    list_display = ('receipt_number', 'contract', 'payment_date', 
-                   'amount_paid', 'payment_method', 'payment_for_month')
-    list_filter = ('payment_method', 'payment_date', 'contract__stall')
-    search_fields = ('receipt_number', 'contract__stall__name')
-    readonly_fields = ('receipt_number', 'created_at')
+    list_display = [
+        'receipt_number',
+        'contract',
+        'payment_date',
+        'amount_paid',
+    ]
+    
+    list_filter = [
+        'payment_date',
+        'contract',
+    ]
+    
+    search_fields = [
+        'receipt_number',
+        'contract__stall__name',
+        'notes',
+    ]
+    
+    readonly_fields = ['receipt_number', 'payment_date']
     
 
 

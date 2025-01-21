@@ -41,6 +41,8 @@
                         <th class="px-6 py-4 text-left text-sm font-semibold">Cost</th>
                         <th class="px-6 py-4 text-left text-sm font-semibold">Supplier</th>
                         <th class="px-6 py-4 text-left text-sm font-semibold">Date Added</th>
+                        <th class="px-6 py-4 text-left text-sm font-semibold">Expiration Date</th>
+                        <th class="px-6 py-4 text-left text-sm font-semibold">Status</th>
                         <th class="px-6 py-4 text-left text-sm font-semibold">Actions</th>
                     </tr>
                 </thead>
@@ -56,6 +58,17 @@
                             <div>{{ supply.supplier.firstname }} {{ supply.supplier.lastname }}</div>
                         </td>
                         <td class="px-6 py-4 text-sm text-gray-600">{{ supply.date_added|date:"M d, Y" }}</td>
+                        <td class="px-6 py-4 text-sm text-gray-600">{{ supply.expiration_date|date:"Y-m-d" }}</td>
+                        <td class="px-6 py-4 text-sm">
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                                {% if supply.status == 'good' %}
+                                    bg-green-100 text-green-800
+                                {% else %}
+                                    bg-red-100 text-red-800
+                                {% endif %}">
+                                {{ supply.get_status_display }}
+                            </span>
+                        </td>
                         <td class="px-6 py-4 text-sm">
                             <button onclick="openEditModal('{{ supply.id }}')" 
                                     class="text-blue-600 hover:text-blue-700 font-medium mr-3">
@@ -124,6 +137,12 @@
                     <div class="mb-4">
                         <label class="block text-gray-700 text-sm font-bold mb-2">Date Added*</label>
                         <input type="date" name="date_added" 
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500" 
+                               required>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2">Expiration Date*</label>
+                        <input type="date" name="expiration_date" 
                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500" 
                                required>
                     </div>
@@ -199,6 +218,7 @@
                     form.querySelector('[name="cost"]').value = data.cost;
                     form.querySelector('[name="supplier"]').value = data.supplier;
                     form.querySelector('[name="date_added"]').value = data.date_added;
+                    form.querySelector('[name="expiration_date"]').value = data.expiration_date;
 
                     form.setAttribute('action', `/stall-admin/supplies/edit/${supplyId}/`);
                     modal.classList.remove('hidden');
@@ -359,6 +379,13 @@
                         <div>${supply.supplier_name}</div>
                     </td>
                     <td class="px-6 py-4 text-sm text-gray-600">${formatDate(supply.date_added)}</td>
+                    <td class="px-6 py-4 text-sm text-gray-600">${formatDate(supply.expiration_date)}</td>
+                    <td class="px-6 py-4 text-sm">
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                            ${supply.status === 'good' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
+                            ${supply.status === 'good' ? 'Good' : 'Expired'}
+                        </span>
+                    </td>
                     <td class="px-6 py-4 text-sm">
                         <button onclick="openEditModal('${supply.id}')" 
                                 class="text-blue-600 hover:text-blue-700 font-medium mr-3">
@@ -492,6 +519,7 @@
                         form.querySelector('[name="cost"]').value = data.cost;
                         form.querySelector('[name="supplier"]').value = data.supplier;
                         form.querySelector('[name="date_added"]').value = data.date_added;
+                        form.querySelector('[name="expiration_date"]').value = data.expiration_date;
 
                         form.setAttribute('action', `/stall-admin/supplies/edit/${supplyId}/`);
                         modal.classList.remove('hidden');
