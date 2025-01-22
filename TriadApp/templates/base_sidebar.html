@@ -1,0 +1,65 @@
+<!-- Fixed toggle button -->
+<button id="sidebarToggle" class="fixed top-4 left-4 z-50 p-2 bg-gray-800 text-white rounded-md hover:bg-gray-700">
+    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+    </svg>
+</button>
+
+<div id="sidebar" class="w-64 h-screen bg-gray-800 text-white fixed sidebar">
+    <!-- Profile section -->
+    <div class="p-4 border-b border-gray-400 mt-10">
+        <div class="flex flex-col items-center space-y-3 mb-4 mt-2">
+            {% if profile_image %}
+                <div class="w-24 h-24 rounded-full overflow-hidden ring-4 ring-white shadow-lg">
+                    <img src="{{ profile_image.url }}" alt="Profile Picture" class="w-full h-full object-cover">
+                </div>
+            {% else %}
+                <div class="w-24 h-24 rounded-full bg-gray-600 flex items-center justify-center ring-4 ring-white shadow-lg">
+                    <span class="text-gray-300 text-3xl font-bold">{{ initials }}</span>
+                </div>
+            {% endif %}
+            
+            <div class="text-center">
+                <p class="text-lg font-semibold">{{ user_name }}</p>
+                <p class="text-sm text-gray-400">{{ role }}</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Navigation menu -->
+    <nav class="mt-4">
+        {{ sidebar_menu }}
+    </nav>
+
+    <!-- Logout Button -->
+    <div class="absolute bottom-0 w-full p-6 border-t border-gray-700">
+        <a href="{% url 'logout' %}" 
+           class="flex items-center justify-center px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors duration-200">
+            <span>Logout</span>
+        </a>
+    </div>
+</div>
+
+<!-- Required CSS -->
+<style>
+    .sidebar {
+        transition: all 0.3s ease-in-out;
+    }
+    .sidebar-collapsed {
+        width: 0;
+        overflow: hidden;
+    }
+    .content-expanded {
+        margin-left: 0;
+    }
+</style>
+
+<!-- Required JavaScript -->
+<script>
+    document.getElementById('sidebarToggle').addEventListener('click', function() {
+        const sidebar = document.getElementById('sidebar');
+        const mainContent = document.getElementById('mainContent');
+        sidebar.classList.toggle('sidebar-collapsed');
+        mainContent.classList.toggle('content-expanded');
+    });
+</script> 

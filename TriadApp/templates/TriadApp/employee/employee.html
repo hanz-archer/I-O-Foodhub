@@ -4,27 +4,40 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Employee Dashboard - {{ stall.name }}</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.16/dist/tailwind.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <link href="https://fonts.googleapis.com/css?family=Poppins:600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        * {
+            font-family: 'Poppins', sans-serif;
+        }
+        .sidebar-collapsed {
+            width: 0;
+            overflow: hidden;
+        }
+        .content-expanded {
+            margin-left: 0;
+        }
+        .sidebar, .flex-1 {
+            transition: all 0.3s ease-in-out;
+        }
+    </style>
 </head>
 <body class="bg-gray-100">
-    <div class="flex h-screen bg-gray-100">
-        <!-- Sidebar Toggle Button (Mobile) -->
-        <button id="sidebarToggle" 
-                class="lg:hidden fixed top-4 left-4 z-20 p-2 rounded-md bg-gray-800 text-white hover:bg-gray-700">
+    <div class="flex">
+        <!-- Fixed toggle button -->
+        <button id="sidebarToggle" class="fixed top-4 left-4 z-50 p-2 bg-gray-800 text-white rounded-md hover:bg-gray-700 lg:hidden">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
             </svg>
         </button>
 
-        <!-- Sidebar -->
-        <div id="sidebar" 
-             class="fixed inset-y-0 left-0 transform -translate-x-full lg:translate-x-0 lg:relative lg:flex w-64 transition-transform duration-300 ease-in-out z-10">
+        <div id="sidebar" class="fixed inset-y-0 left-0 w-64 bg-gray-800 transform transition-transform duration-200 ease-in-out lg:translate-x-0">
             <div class="flex flex-col flex-1 min-h-0 bg-gray-800">
                 <!-- Logo/Brand -->
                 <div class="flex items-center justify-between h-16 px-4 bg-gray-900 text-white">
-                    <div class="flex items-center">
+                    <div class="flex items-center ml-12 lg:ml-0">
                         <span class="text-xl font-semibold">{{ stall.name }}</span>
                     </div>
                     <!-- Close button for mobile -->
@@ -100,8 +113,7 @@
             </div>
         </div>
 
-        <!-- Main Content -->
-        <div class="flex-1 flex flex-col overflow-hidden">
+        <div id="mainContent" class="flex-1 ml-64 p-6">
             {% block content %}
             <div class="p-6">
                 <h1 class="text-3xl font-bold text-gray-800 mb-8 text-center">{{ stall.name }} - Employee Dashboard</h1>
@@ -173,33 +185,24 @@
 
     <script>
     document.addEventListener('DOMContentLoaded', function() {
-        const sidebar = document.getElementById('sidebar');
         const sidebarToggle = document.getElementById('sidebarToggle');
+        const sidebar = document.getElementById('sidebar');
+        const mainContent = document.getElementById('mainContent');
         const sidebarClose = document.getElementById('sidebarClose');
-        const mainContent = document.querySelector('.flex-1');
 
         function toggleSidebar() {
             sidebar.classList.toggle('-translate-x-full');
-        }
-
-        function closeSidebar() {
-            sidebar.classList.add('-translate-x-full');
+            mainContent.classList.toggle('ml-0');
+            mainContent.classList.toggle('ml-64');
         }
 
         sidebarToggle.addEventListener('click', toggleSidebar);
-        sidebarClose.addEventListener('click', closeSidebar);
+        sidebarClose.addEventListener('click', toggleSidebar);
 
         // Close sidebar when clicking outside on mobile
         mainContent.addEventListener('click', function(e) {
             if (window.innerWidth < 1024 && !sidebar.classList.contains('-translate-x-full')) {
-                closeSidebar();
-            }
-        });
-
-        // Handle window resize
-        window.addEventListener('resize', function() {
-            if (window.innerWidth >= 1024) {
-                sidebar.classList.remove('-translate-x-full');
+                toggleSidebar();
             }
         });
     });
