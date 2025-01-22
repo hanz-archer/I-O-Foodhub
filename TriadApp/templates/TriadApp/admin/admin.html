@@ -23,31 +23,72 @@
         .sidebar, .flex-1 {
             transition: all 0.3s ease-in-out;
         }
+        .sidebar {
+            transition: all 0.3s ease-in-out;
+            height: 100vh;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(156, 163, 175, 0.5) transparent;
+        }
+        
+        .sidebar::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .sidebar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        
+        .sidebar::-webkit-scrollbar-thumb {
+            background-color: rgba(156, 163, 175, 0.5);
+            border-radius: 3px;
+        }
+
+        .sidebar-collapsed {
+            width: 0;
+            overflow: hidden;
+        }
+
+        .content-expanded {
+            margin-left: 0;
+        }
+
+        /* Add padding to bottom of nav to prevent logout button overlap */
+        nav {
+            padding-bottom: 80px;
+        }
+
+        .sidebar {
+            transition: all 0.3s ease-in-out;
+        }
+        
+        #mainContent {
+            transition: margin-left 0.3s ease-in-out;
+        }
     </style>
 </head>
 
 <body class="bg-gray-100">
     <div class="flex">
-        <!-- Fixed toggle button -->
-        <button id="sidebarToggle" class="fixed top-4 left-4 z-50 p-2 bg-gray-800 text-white rounded-md hover:bg-gray-700 lg:hidden">
+        <!-- Fixed toggle button that shows when sidebar is closed -->
+        <button id="sidebarOpenBtn" class="fixed top-4 left-4 z-50 p-2 bg-gray-800 text-white rounded-md hover:bg-gray-700 hidden">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
             </svg>
         </button>
-
-        <div id="sidebar" class="fixed inset-y-0 left-0 w-64 bg-gray-800 transform transition-transform duration-200 ease-in-out lg:translate-x-0">
+        
+        <div id="sidebar" class="fixed inset-y-0 left-0 w-64 bg-gray-800 transform transition-transform duration-200 ease-in-out overflow-y-auto flex flex-col">
             <div class="flex flex-col flex-1 min-h-0 bg-gray-800">
-                <!-- Logo/Brand -->
-                <div class="flex items-center justify-between h-16 px-4 bg-gray-900 text-white">
-                    <div class="flex items-center ml-12 lg:ml-0">
+                <!-- Logo/Brand with toggle button -->
+                <div class="flex items-center h-16 px-4 bg-gray-900 text-white mt-14">
+                    <div class="flex items-center gap-3">
+                        <!-- Sidebar Close Button -->
+                        <button id="sidebarCloseBtn" class="p-2 rounded-md hover:bg-gray-700">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                            </svg>
+                        </button>
                         <span class="text-xl font-semibold">{{ stall.name }}</span>
                     </div>
-                    <!-- Close button for mobile -->
-                    <button id="sidebarClose" class="lg:hidden p-2 rounded-md hover:bg-gray-700">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                        </svg>
-                    </button>
                 </div>
 
                 <!-- User Info -->
@@ -71,59 +112,76 @@
                     </div>
                 </div>
 
-                <!-- Navigation -->
-                <nav class="flex-1 px-2 py-4 space-y-1 overflow-y-auto">
-                    <a href="{% url 'admin_dashboard' %}" class="flex items-center px-4 py-2 text-white hover:bg-gray-700 rounded-md">
-                        <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
-                        </svg>
-                        Dashboard
-                    </a>
-
-                    <a href="{% url 'admin_profile' %}" class="flex items-center px-4 py-2 text-white hover:bg-gray-700 rounded-md">
-                        <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
-                        </svg>
-                        Admin Profile
-                    </a>
-
-                    <a href="{% url 'add_employee' %}" class="flex items-center px-4 py-2 text-white hover:bg-gray-700 rounded-md">
-                        <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
-                        </svg>
-                        Employee Management
-                    </a>
-
-                    <a href="{% url 'manage_categories' %}" class="flex items-center px-4 py-2 text-white hover:bg-gray-700 rounded-md">
-                        <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
-                        </svg>
-                        Category Management
-                    </a>
-
-                    <a href="{% url 'manage_inventory' %}" class="flex items-center px-4 py-2 text-white hover:bg-gray-700 rounded-md">
-                        <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
-                        </svg>
-                        Product Management
-                    </a>
-
-                    <a href="{% url 'admin_reports' %}" class="flex items-center px-4 py-2 text-white hover:bg-gray-700 rounded-md">
-                        <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                        </svg>
-                        Reports
-                    </a>
-
-                    <div class="mt-auto pt-4 border-t border-gray-700">
-                        <a href="{% url 'logout' %}" class="flex items-center px-4 py-2 text-red-400 hover:bg-gray-700 hover:text-red-300 rounded-md">
+                <!-- Main navigation section -->
+                <div class="flex-grow">
+                    <nav class="px-2 py-4 space-y-1">
+                        <a href="{% url 'admin_dashboard' %}" class="flex items-center px-4 py-2 text-white hover:bg-gray-700 rounded-md">
                             <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path>
                             </svg>
-                            Logout
+                            Dashboard
                         </a>
-                    </div>
-                </nav>
+
+                        <a href="{% url 'admin_profile' %}" class="flex items-center px-4 py-2 text-white hover:bg-gray-700 rounded-md">
+                            <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            Admin Profile
+                        </a>
+
+                        <a href="{% url 'add_employee' %}" class="flex items-center px-4 py-2 text-white hover:bg-gray-700 rounded-md">
+                            <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path>
+                            </svg>
+                            Employee Management
+                        </a>
+
+                        <a href="{% url 'manage_categories' %}" class="flex items-center px-4 py-2 text-white hover:bg-gray-700 rounded-md">
+                            <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path>
+                            </svg>
+                            Category Management
+                        </a>
+
+                        <a href="{% url 'manage_suppliers' %}" class="flex items-center px-4 py-2 text-white hover:bg-gray-700 rounded-md">
+                            <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z"></path>
+                            </svg>
+                            Supplier Management
+                        </a>
+
+                        <a href="{% url 'manage_supplies' %}" class="flex items-center px-4 py-2 text-white hover:bg-gray-700 rounded-md">
+                            <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
+                            </svg>
+                            Supply Management
+                        </a>
+
+                        <a href="{% url 'manage_inventory' %}" class="flex items-center px-4 py-2 text-white hover:bg-gray-700 rounded-md">
+                            <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
+                            </svg>
+                            Product Management
+                        </a>
+
+                        <a href="{% url 'admin_reports' %}" class="flex items-center px-4 py-2 text-white hover:bg-gray-700 rounded-md">
+                            <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                            </svg>
+                            Reports
+                        </a>
+                    </nav>
+                </div>
+
+                <!-- Logout section -->
+                <div class="px-2 py-4 border-t border-gray-700 bg-gray-800 sticky bottom-0">
+                    <a href="{% url 'logout' %}" class="flex items-center px-4 py-2 text-red-400 hover:bg-gray-700 hover:text-red-300 rounded-md">
+                        <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+                        </svg>
+                        Logout
+                    </a>
+                </div>
             </div>
         </div>
 
@@ -254,33 +312,81 @@
                     console.error('Error initializing charts:', error);
                 }
             </script>
-
-            <script>
-            document.addEventListener('DOMContentLoaded', function() {
-                const sidebarToggle = document.getElementById('sidebarToggle');
-                const sidebar = document.getElementById('sidebar');
-                const mainContent = document.getElementById('mainContent');
-                const sidebarClose = document.getElementById('sidebarClose');
-
-                function toggleSidebar() {
-                    sidebar.classList.toggle('-translate-x-full');
-                    mainContent.classList.toggle('ml-0');
-                    mainContent.classList.toggle('ml-64');
-                }
-
-                sidebarToggle.addEventListener('click', toggleSidebar);
-                sidebarClose.addEventListener('click', toggleSidebar);
-
-                // Close sidebar when clicking outside on mobile
-                mainContent.addEventListener('click', function(e) {
-                    if (window.innerWidth < 1024 && !sidebar.classList.contains('-translate-x-full')) {
-                        toggleSidebar();
-                    }
-                });
-            });
-            </script>
             {% endblock %}
         </div>
     </div>
+
+    <!-- Move JavaScript outside of content block -->
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const sidebar = document.getElementById('sidebar');
+        const mainContent = document.getElementById('mainContent');
+        const sidebarCloseBtn = document.getElementById('sidebarCloseBtn');
+        const sidebarOpenBtn = document.getElementById('sidebarOpenBtn');
+
+        function closeSidebar() {
+            sidebar.classList.add('-translate-x-full');
+            mainContent.classList.remove('ml-64');
+            mainContent.classList.add('ml-0');
+            sidebarOpenBtn.classList.remove('hidden');
+        }
+
+        function openSidebar() {
+            sidebar.classList.remove('-translate-x-full');
+            mainContent.classList.remove('ml-0');
+            mainContent.classList.add('ml-64');
+            sidebarOpenBtn.classList.add('hidden');
+        }
+
+        if (sidebarCloseBtn) {
+            sidebarCloseBtn.addEventListener('click', closeSidebar);
+        }
+
+        if (sidebarOpenBtn) {
+            sidebarOpenBtn.addEventListener('click', openSidebar);
+        }
+
+        // Close sidebar when clicking outside on mobile
+        mainContent.addEventListener('click', function(e) {
+            if (window.innerWidth < 1024 && !sidebar.classList.contains('-translate-x-full')) {
+                closeSidebar();
+            }
+        });
+    });
+    </script>
+
+    <style>
+        * {
+            font-family: 'Poppins', sans-serif;
+        }
+
+        #sidebar {
+            transition: transform 0.3s ease-in-out;
+            height: 100vh;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(156, 163, 175, 0.5) transparent;
+        }
+        
+        #sidebar::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        #sidebar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        
+        #sidebar::-webkit-scrollbar-thumb {
+            background-color: rgba(156, 163, 175, 0.5);
+            border-radius: 3px;
+        }
+        
+        #mainContent {
+            transition: margin-left 0.3s ease-in-out;
+        }
+
+        #sidebarOpenBtn {
+            transition: opacity 0.3s ease-in-out;
+        }
+    </style>
 </body>
 </html>

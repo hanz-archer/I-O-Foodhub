@@ -22,49 +22,80 @@
         .sidebar, .flex-1 {
             transition: all 0.3s ease-in-out;
         }
+        @media (max-width: 640px) {
+            .text-xl {
+                font-size: 1.1rem;
+            }
+            .text-2xl {
+                font-size: 1.3rem;
+            }
+            .text-3xl {
+                font-size: 1.5rem;
+            }
+            .p-6 {
+                padding: 1rem;
+            }
+        }
+        @media (max-width: 768px) {
+            .text-xl {
+                font-size: 1.2rem;
+            }
+            .text-2xl {
+                font-size: 1.4rem;
+            }
+            .text-3xl {
+                font-size: 1.75rem;
+            }
+        }
+        #weeklyChart {
+            width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
     </style>
 </head>
 <body class="bg-gray-100">
     <div class="flex">
-        <!-- Fixed toggle button -->
-        <button id="sidebarToggle" class="fixed top-4 left-4 z-50 p-2 bg-gray-800 text-white rounded-md hover:bg-gray-700 lg:hidden">
+        <!-- Fixed toggle button that shows when sidebar is closed -->
+        <button id="sidebarOpenBtn" class="fixed top-4 left-4 z-50 p-2 bg-gray-800 text-white rounded-md hover:bg-gray-700 hidden">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
             </svg>
         </button>
-
-        <div id="sidebar" class="fixed inset-y-0 left-0 w-64 bg-gray-800 transform transition-transform duration-200 ease-in-out lg:translate-x-0">
-            <div class="flex flex-col flex-1 min-h-0 bg-gray-800">
-                <!-- Logo/Brand -->
-                <div class="flex items-center justify-between h-16 px-4 bg-gray-900 text-white">
-                    <div class="flex items-center ml-12 lg:ml-0">
-                        <span class="text-xl font-semibold">{{ stall.name }}</span>
-                    </div>
-                    <!-- Close button for mobile -->
-                    <button id="sidebarClose" class="lg:hidden p-2 rounded-md hover:bg-gray-700">
+        
+        <div id="sidebar" class="fixed inset-y-0 left-0 w-64 bg-gray-800 transform transition-transform duration-200 ease-in-out overflow-y-auto flex flex-col">
+            <!-- Logo/Brand with toggle button -->
+            <div class="flex items-center h-16 px-4 bg-gray-900 text-white mt-14">
+                <div class="flex items-center gap-3">
+                    <!-- Sidebar Close Button -->
+                    <button id="sidebarCloseBtn" class="p-2 rounded-md hover:bg-gray-700">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
                         </svg>
                     </button>
+                    <span class="text-xl font-semibold">{{ stall.name }}</span>
                 </div>
+            </div>
 
+            <!-- Main navigation section -->
+            <div class="flex-grow">
                 <!-- User Info -->
                 <div class="px-4 py-6 text-white">
                     <div class="flex items-center space-x-3 mb-3">
                         <div class="flex-shrink-0">
                             <div class="w-10 h-10 rounded-full bg-gray-600 flex items-center justify-center">
-                                <span class="text-lg font-semibold">{{ employee.firstname|first }}{{ employee.lastname|first }}</span>
+                                <span class="text-lg font-semibold">{{ employee.firstname|first }}</span>
                             </div>
                         </div>
                         <div>
                             <p class="font-medium">{{ employee.firstname }} {{ employee.lastname }}</p>
-                            <p class="text-sm text-gray-400">{{ employee.position }}</p>
+                            <p class="text-sm text-gray-400">Employee</p>
                         </div>
                     </div>
                 </div>
 
                 <!-- Navigation -->
-                <nav class="flex-1 px-2 py-4 space-y-1 overflow-y-auto">
+                <nav class="px-2 py-4 space-y-1">
                     <a href="{% url 'employee_dashboard' %}" 
                        class="flex items-center px-4 py-2 text-white hover:bg-gray-700 rounded-md">
                         <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -99,35 +130,37 @@
                   </svg>
                 Submit Report
               </a>
-                    <a href="{% url 'logout' %}" 
-                       class="flex items-center px-4 py-2 text-white hover:bg-red-600 rounded-md mt-auto">
-                        <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-                                  d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
-                        </svg>
-                        Logout
-                    </a>
-
-                    
                 </nav>
+            </div>
+
+            <!-- Logout section -->
+            <div class="px-2 py-4 border-t border-gray-700 bg-gray-800 sticky bottom-0">
+                <a href="{% url 'logout' %}" class="flex items-center px-4 py-2 text-red-400 hover:bg-gray-700 hover:text-red-300 rounded-md">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+                    </svg>
+                    Logout
+                </a>
             </div>
         </div>
 
         <div id="mainContent" class="flex-1 ml-64 p-6">
             {% block content %}
-            <div class="p-6">
-                <h1 class="text-3xl font-bold text-gray-800 mb-8 text-center">{{ stall.name }} - Employee Dashboard</h1>
+            <div class="p-2 sm:p-4 md:p-6">
+                <h1 class="text-xl sm:text-2xl md:text-3xl font-bold text-gray-800 mb-4 sm:mb-6 md:mb-8 text-center">
+                    {{ stall.name }} - Employee Dashboard
+                </h1>
                 
                 <!-- Today's Sales Card -->
-                <div class="bg-white p-6 rounded-lg shadow-lg mb-6 max-w-4xl mx-auto">
-                    <h2 class="text-xl font-semibold mb-4">Today's Sales</h2>
-                    <p class="text-3xl font-bold text-green-600">₱{{ today_sales|floatformat:2 }}</p>
+                <div class="bg-white p-3 sm:p-4 md:p-6 rounded-lg shadow-lg mb-4 sm:mb-6 max-w-4xl mx-auto">
+                    <h2 class="text-lg sm:text-xl font-semibold mb-2 sm:mb-4">Today's Sales</h2>
+                    <p class="text-xl sm:text-2xl md:text-3xl font-bold text-green-600">₱{{ today_sales|floatformat:2 }}</p>
                 </div>
 
                 <!-- Weekly Sales Chart -->
-                <div class="bg-white p-6 rounded-lg shadow-lg max-w-4xl mx-auto">
-                    <h2 class="text-xl font-semibold mb-4">My Weekly Sales</h2>
-                    <div id="weeklyChart"></div>
+                <div class="bg-white p-3 sm:p-4 md:p-6 rounded-lg shadow-lg max-w-4xl mx-auto overflow-x-auto">
+                    <h2 class="text-lg sm:text-xl font-semibold mb-2 sm:mb-4">My Weekly Sales</h2>
+                    <div id="weeklyChart" class="min-w-[300px]"></div>
                 </div>
             </div>
 
@@ -138,27 +171,95 @@
                     const weeklyData = JSON.parse('{{ weekly_data|escapejs }}');
                     const weeklyLabels = JSON.parse('{{ weekly_labels|escapejs }}');
 
-                    // Weekly Sales Chart
+                    // Weekly Sales Chart with improved spacing
                     const weeklyOptions = {
                         series: weeklyData,
                         chart: {
                             type: 'bar',
-                            height: 350
+                            height: 350,
+                            toolbar: {
+                                show: true,
+                                tools: {
+                                    download: true,
+                                    selection: false,
+                                    zoom: false,
+                                    zoomin: false,
+                                    zoomout: false,
+                                    pan: false,
+                                }
+                            },
+                            redrawOnWindowResize: true,
+                            redrawOnParentResize: true,
+                            animations: {
+                                enabled: true
+                            }
                         },
                         plotOptions: {
                             bar: {
                                 horizontal: false,
-                                columnWidth: '55%',
-                                endingShape: 'rounded'
+                                columnWidth: '40%',
+                                endingShape: 'rounded',
+                                distributed: false,
+                                dataLabels: {
+                                    position: 'top'
+                                }
                             },
                         },
-                        colors: ['#10B981'], // Green color for the bars
+                        dataLabels: {
+                            enabled: true,
+                            formatter: function(val) {
+                                return '₱' + val.toFixed(2);
+                            },
+                            offsetY: -20,
+                            style: {
+                                fontSize: '12px',
+                                fontFamily: 'Poppins, sans-serif',
+                                colors: ["#304758"]
+                            }
+                        },
+                        colors: ['#10B981'],
                         xaxis: {
                             categories: weeklyLabels,
+                            labels: {
+                                style: {
+                                    fontSize: '12px',
+                                    fontFamily: 'Poppins, sans-serif',
+                                },
+                                rotate: -45,
+                                rotateAlways: true,
+                                hideOverlappingLabels: true,
+                                trim: true,
+                                maxHeight: 120
+                            },
+                            tickPlacement: 'on',
+                            axisBorder: {
+                                show: true
+                            },
+                            axisTicks: {
+                                show: true
+                            }
                         },
                         yaxis: {
                             title: {
-                                text: 'Sales (₱)'
+                                text: 'Sales (₱)',
+                                style: {
+                                    fontSize: '14px',
+                                    fontFamily: 'Poppins, sans-serif',
+                                }
+                            },
+                            labels: {
+                                style: {
+                                    fontSize: '12px',
+                                    fontFamily: 'Poppins, sans-serif',
+                                },
+                                formatter: function(value) {
+                                    return '₱' + value.toFixed(2);
+                                }
+                            }
+                        },
+                        grid: {
+                            padding: {
+                                top: 40
                             }
                         },
                         fill: {
@@ -166,14 +267,65 @@
                         },
                         title: {
                             text: 'This Week\'s Sales Performance',
-                            align: 'left'
-                        }
+                            align: 'left',
+                            style: {
+                                fontSize: '16px',
+                                fontFamily: 'Poppins, sans-serif',
+                            }
+                        },
+                        responsive: [{
+                            breakpoint: 640,
+                            options: {
+                                chart: {
+                                    height: 300
+                                },
+                                plotOptions: {
+                                    bar: {
+                                        columnWidth: '50%'
+                                    }
+                                },
+                                dataLabels: {
+                                    fontSize: '10px',
+                                    offsetY: -10
+                                },
+                                title: {
+                                    style: {
+                                        fontSize: '14px'
+                                    }
+                                },
+                                xaxis: {
+                                    labels: {
+                                        style: {
+                                            fontSize: '10px'
+                                        },
+                                        rotate: -45,
+                                        rotateAlways: true
+                                    }
+                                },
+                                yaxis: {
+                                    labels: {
+                                        style: {
+                                            fontSize: '10px'
+                                        }
+                                    }
+                                }
+                            }
+                        }]
                     };
 
                     // Render the chart
                     if (weeklyData.length > 0) {
                         const weeklyChart = new ApexCharts(document.querySelector("#weeklyChart"), weeklyOptions);
                         weeklyChart.render();
+
+                        // Add window resize handler
+                        window.addEventListener('resize', function() {
+                            weeklyChart.updateOptions({
+                                chart: {
+                                    width: '100%'
+                                }
+                            });
+                        });
                     }
                 } catch (error) {
                     console.error('Error initializing charts:', error);
@@ -183,26 +335,74 @@
         </div>
     </div>
 
-    <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const sidebarToggle = document.getElementById('sidebarToggle');
-        const sidebar = document.getElementById('sidebar');
-        const mainContent = document.getElementById('mainContent');
-        const sidebarClose = document.getElementById('sidebarClose');
-
-        function toggleSidebar() {
-            sidebar.classList.toggle('-translate-x-full');
-            mainContent.classList.toggle('ml-0');
-            mainContent.classList.toggle('ml-64');
+    <style>
+        * {
+            font-family: 'Poppins', sans-serif;
         }
 
-        sidebarToggle.addEventListener('click', toggleSidebar);
-        sidebarClose.addEventListener('click', toggleSidebar);
+        #sidebar {
+            transition: transform 0.3s ease-in-out;
+            height: 100vh;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(156, 163, 175, 0.5) transparent;
+        }
+        
+        #sidebar::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        #sidebar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        
+        #sidebar::-webkit-scrollbar-thumb {
+            background-color: rgba(156, 163, 175, 0.5);
+            border-radius: 3px;
+        }
+        
+        #mainContent {
+            transition: margin-left 0.3s ease-in-out;
+        }
+
+        #sidebarOpenBtn {
+            transition: opacity 0.3s ease-in-out;
+        }
+    </style>
+
+    <!-- Toggle functionality -->
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const sidebar = document.getElementById('sidebar');
+        const mainContent = document.getElementById('mainContent');
+        const sidebarCloseBtn = document.getElementById('sidebarCloseBtn');
+        const sidebarOpenBtn = document.getElementById('sidebarOpenBtn');
+
+        function closeSidebar() {
+            sidebar.classList.add('-translate-x-full');
+            mainContent.classList.remove('ml-64');
+            mainContent.classList.add('ml-0');
+            sidebarOpenBtn.classList.remove('hidden');
+        }
+
+        function openSidebar() {
+            sidebar.classList.remove('-translate-x-full');
+            mainContent.classList.remove('ml-0');
+            mainContent.classList.add('ml-64');
+            sidebarOpenBtn.classList.add('hidden');
+        }
+
+        if (sidebarCloseBtn) {
+            sidebarCloseBtn.addEventListener('click', closeSidebar);
+        }
+
+        if (sidebarOpenBtn) {
+            sidebarOpenBtn.addEventListener('click', openSidebar);
+        }
 
         // Close sidebar when clicking outside on mobile
         mainContent.addEventListener('click', function(e) {
             if (window.innerWidth < 1024 && !sidebar.classList.contains('-translate-x-full')) {
-                toggleSidebar();
+                closeSidebar();
             }
         });
     });
