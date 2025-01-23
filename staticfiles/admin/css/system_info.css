@@ -1,0 +1,10 @@
+.field-system_details {
+    white-space: pre-line;
+    font-family: monospace;
+    font-size: 0.9em;
+}
+
+.field-wifi_connection {
+    font-family: monospace;
+    color: #1a73e8;
+} 

@@ -14,9 +14,18 @@
         .sidebar {
             transition: all 0.3s ease-in-out;
         }
+        body {
+            background-image: url('{% static "images/home.jpg" %}');
+            background-color: #E8E3D7; /* Fallback color */
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            min-height: 100vh;
+        }
     </style>
 </head>
-<body class="bg-[#E8E3D7]">
+<body>
     <!-- Side Navbar -->
     <nav class="fixed top-0 left-0 h-full w-64 bg-white shadow-lg z-50">
         <div class="flex flex-col h-full">
@@ -49,7 +58,7 @@
 
     <!-- Main Content -->
     <div class="ml-64 min-h-screen p-8 flex items-center justify-center">
-        <div class="bg-white rounded-xl shadow-2xl p-8 max-w-4xl w-full">
+        <div class="bg-white/50 backdrop-blur-sm rounded-xl shadow-2xl p-8 max-w-4xl w-full">
             <div class="flex flex-col items-center justify-center space-y-8">
                 <!-- Logo Container -->
                 <div class="text-center">
