@@ -110,7 +110,7 @@ def update_super_admin_profile(request):
 
 @superuser_required
 def add_stall(request):
-    FIXED_MONTHLY_RATE = Decimal('5000.00')
+    FIXED_MONTHLY_RATE = Decimal('8000.00')
     
     if request.method == 'POST':
         try:

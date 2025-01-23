@@ -14,6 +14,7 @@
             font-family: 'Poppins', sans-serif;
         }
         .sidebar {
+            background-color: brown;
             transition: all 0.3s ease-in-out;
             height: 100vh;
             scrollbar-width: thin;
@@ -45,7 +46,7 @@
     {% block extra_head %}{% endblock %}
 </head>
 
-<body class="bg-gray-100">
+<body class="bg-yellow-100">
     <div class="flex">
         <!-- Fixed toggle button -->
         <button id="sidebarToggle" class="fixed top-4 left-4 z-50 p-2 bg-gray-800 text-white rounded-md hover:bg-gray-700">
@@ -140,7 +141,7 @@
 
             <!-- Logout section -->
             <div class="px-2 py-4 border-t border-gray-700 bg-gray-800 sticky bottom-0">
-                <a href="{% url 'logout' %}" class="flex items-center px-4 py-2 text-red-400 hover:bg-gray-700 hover:text-red-300 rounded-md">
+                <a href="#" onclick="confirmLogout(event)" class="flex items-center px-4 py-2 text-red-400 hover:bg-gray-700 hover:text-red-300 rounded-md">
                     <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
                     </svg>
@@ -302,6 +303,44 @@
         document.addEventListener('profileUpdated', function() {
             refreshProfileImage();
         });
+    </script>
+
+    <!-- Add this script at the end of your existing scripts -->
+    <script>
+        function confirmLogout(event) {
+            event.preventDefault();
+            
+            Swal.fire({
+                title: 'Confirm Logout',
+                text: 'Are you sure you want to logout?',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#3085d6',
+                cancelButtonColor: '#d33',
+                confirmButtonText: 'Yes, logout',
+                cancelButtonText: 'Cancel',
+                customClass: {
+                    popup: 'font-poppins'
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // Show loading state
+                    Swal.fire({
+                        title: 'Logging out...',
+                        text: 'Please wait',
+                        allowOutsideClick: false,
+                        showConfirmButton: false,
+                        willOpen: () => {
+                            Swal.showLoading();
+                        },
+                        timer: 1000,
+                        timerProgressBar: true
+                    }).then(() => {
+                        window.location.href = "{% url 'logout' %}";
+                    });
+                }
+            });
+        }
     </script>
 </body>
 
