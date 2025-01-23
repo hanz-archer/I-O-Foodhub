@@ -20,6 +20,8 @@ from django.utils import timezone
 from .models import StallContract, StallPayment
 from decimal import Decimal
 from django.db import transaction
+from django.db.models import Sum
+from django.db import models
 CustomUser = get_user_model()
 
 
@@ -429,6 +431,9 @@ def delete_admin(request, admin_id):
         'message': 'Invalid request method'
     })
 
+
+
+
 @superuser_required
 def stall_contract(request, store_id):
     stall = get_object_or_404(Stall, store_id=store_id)
@@ -507,8 +512,9 @@ def manage_contracts(request):
         if not contract.start_date:
             contract.status = 'pending'
         else:
+            # Only check expiration if start_date exists
             contract_end = contract.start_date + timedelta(days=365)  # Fixed to 1 year
-            if contract_end < current_date:
+            if current_date > contract_end:
                 # Contract has expired
                 contract.status = 'expired'
                 contract.payment_status = 'expired'
@@ -585,11 +591,21 @@ def contract_details(request, contract_id):
     total_paid = sum(payment.amount_paid for payment in payments)
     remaining_balance = contract.total_amount - total_paid
     
+    # Calculate months paid
+    months_paid = int(total_paid / contract.monthly_rate) if contract.monthly_rate else 0
+    
+    # Calculate remaining payments needed for activation
+    payments_count = payments.count()
+    remaining_payments = max(0, 2 - payments_count)
+    
     context = {
         'contract': contract,
         'payments': payments,
         'total_paid': total_paid,
         'remaining_balance': remaining_balance,
+        'months_paid': months_paid,
+        'payments_count': payments_count,
+        'remaining_payments': remaining_payments,
         'super_admin': request.user
     }
     return render(request, 'TriadApp/superadmin/contract_details.html', context)
@@ -599,20 +615,15 @@ def add_payment(request, contract_id):
     if request.method == 'POST':
         try:
             contract = get_object_or_404(StallContract, id=contract_id)
-            
             amount = Decimal(request.POST.get('amount'))
             notes = request.POST.get('notes', '')
             
-            # Calculate total amount and current total paid
-            total_amount = contract.total_amount
-            current_total_paid = sum(p.amount_paid for p in contract.payments.all())
-            remaining_balance = total_amount - current_total_paid
-            
             # Validate payment amount
-            if amount > remaining_balance:
+            monthly_amount = contract.monthly_rate
+            if amount != monthly_amount:
                 return JsonResponse({
                     'status': 'error',
-                    'message': f'Payment amount exceeds remaining balance (₱{remaining_balance})'
+                    'message': f'Payment amount must be exactly ₱{monthly_amount:,.2f} (monthly rate)'
                 })
             
             # Create the payment
@@ -622,49 +633,47 @@ def add_payment(request, contract_id):
                 notes=notes
             )
             
-            # Calculate new total paid after this payment
-            new_total_paid = current_total_paid + amount
+            # Get payment count and total
+            payment_count = contract.payments.count()
+            total_paid = contract.payments.aggregate(
+                total=models.Sum('amount_paid'))['total'] or Decimal('0')
             
-            # If this is the first payment, set the contract start date
-            if not contract.start_date:
-                contract.start_date = timezone.now().date()
-                contract.save()
-            
-            # Check if fully paid
-            if new_total_paid >= total_amount:
-                # Activate the stall only when fully paid
-                contract.stall.is_active = True
-                contract.stall.save()
-                contract.payment_status = 'paid'
-                contract.save()
-                message = 'Payment recorded successfully. Contract fully paid and stall activated!'
+            # Customize message based on payment count
+            if payment_count == 1:
+                message = 'First payment recorded successfully. One more payment required to activate the stall.'
+            elif payment_count == 2:
+                message = 'Second payment recorded successfully. Stall has been activated!'
             else:
-                # Keep stall inactive and update remaining balance
-                contract.stall.is_active = False
-                contract.stall.save()
-                contract.payment_status = 'pending'
-                contract.save()
-                remaining = total_amount - new_total_paid
-                message = f'Payment recorded successfully. Remaining balance: ₱{remaining:,.2f}'
+                message = 'Monthly payment recorded successfully.'
+            
+            # Calculate months for response
+            months_paid = int(total_paid / monthly_amount)
+            months_remaining = 12 - months_paid
             
             return JsonResponse({
                 'status': 'success',
                 'message': message,
-                'receipt_number': payment.receipt_number
+                'receipt_number': payment.receipt_number,
+                'months_paid': months_paid,
+                'months_remaining': months_remaining,
+                'payments_until_activation': max(0, 2 - payment_count)
             })
             
-        except ValueError:
+        except ValueError as e:
             return JsonResponse({
                 'status': 'error',
-                'message': 'Invalid input values'
+                'message': f'Invalid amount: {str(e)}'
             })
         except Exception as e:
             return JsonResponse({
                 'status': 'error',
-                'message': str(e)
+                'message': f'Payment error: {str(e)}'
             })
     
-    return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
+    return JsonResponse({
+        'status': 'error',
+        'message': 'Invalid request method'
+    })
 
 # Add a new view to handle contract renewal
 @superuser_required

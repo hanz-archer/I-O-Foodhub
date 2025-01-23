@@ -337,7 +337,7 @@ function confirmDelete(url) {
     });
 }
 
-// SweetAlert edit form with pre-filled values
+// SweetAlert edit form with pre-filled values and confirmation
 function editStall(element) {
     const storeId = element.dataset.storeId;
     const name = element.dataset.name;
@@ -367,18 +367,52 @@ function editStall(element) {
         cancelButtonText: 'Cancel',
         preConfirm: () => {
             const formData = new FormData(document.getElementById('editForm'));
-            return fetch("{% url 'edit_stall' %}", {
-                method: 'POST',
-                body: formData
-            }).then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    return data; // Return the data to be used in the next then()
-                } else {
-                    throw new Error(data.message);
+            
+            // Show confirmation dialog before saving
+            return Swal.fire({
+                title: 'Confirm Changes',
+                html: `
+                    <div class="text-left">
+                        <h3 class="font-semibold mb-2">New Stall Details:</h3>
+                        <p>Name: ${formData.get('name')}</p>
+                        <p>Contact: ${formData.get('contact_number')}</p>
+                        <p>Status: ${formData.get('is_active') ? 'Active' : 'Inactive'}</p>
+                        ${formData.get('logo').name ? `<p>New Logo: ${formData.get('logo').name}</p>` : ''}
+                    </div>
+                `,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Yes, save changes',
+                cancelButtonText: 'Cancel',
+                confirmButtonColor: '#3085d6',
+                cancelButtonColor: '#d33',
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // Show loading state
+                    Swal.fire({
+                        title: 'Saving Changes...',
+                        text: 'Please wait while we update the stall information',
+                        allowOutsideClick: false,
+                        didOpen: () => {
+                            Swal.showLoading();
+                        }
+                    });
+                    
+                    // Submit the form
+                    return fetch("{% url 'edit_stall' %}", {
+                        method: 'POST',
+                        body: formData
+                    }).then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            return data;
+                        } else {
+                            throw new Error(data.message);
+                        }
+                    }).catch(error => {
+                        Swal.showValidationMessage(error.message || 'An error occurred!');
+                    });
                 }
-            }).catch(error => {
-                Swal.showValidationMessage(error.message || 'An error occurred!');
             });
         }
     }).then((result) => {

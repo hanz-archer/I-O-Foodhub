@@ -8,41 +8,77 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css?family=Poppins:600&display=swap" rel="stylesheet">
     <style>
-        * {
-            font-family: 'Poppins', sans-serif;
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
         }
-        .sidebar {
-            transition: all 0.3s ease-in-out;
-            background-color: #D4C5A9; /* Light brown sidebar */
-            border-right: 1px solid #C2A887;
-        }
+
         body {
-            background-color: #E8E3D7; /* Light brown background */
-        }
-        /* Add gradient overlay for more depth */
-        .main-background {
-            background: linear-gradient(to bottom right, #E8E3D7, #D4C5A9);
+            position: relative;
+            font-family: 'Poppins', sans-serif;
             min-height: 100vh;
         }
-        /* Add styles for sidebar elements */
-        .sidebar-link {
-            transition: all 0.2s ease;
-            color: #654B34;
+
+        /* Simplified background styling */
+        .background-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -2;
         }
-        .sidebar-link:hover {
-            color: #33251A;
-            background-color: #E8E3D7;
-        }
-        body {
+
+        .background-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
             background-image: url('{% static "images/home.jpg" %}');
-            background-color: #E8E3D7; /* Fallback color */
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
-            background-attachment: fixed;
-            min-height: 100vh;
+        }
+
+        /* Simple overlay for better contrast */
+        .background-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.2);
+            z-index: -1;
+        }
+
+        /* Content styling */
+        .content-container {
+            position: relative;
+            z-index: 1;
+        }
+
+        .main-content {
+            background-color: rgba(255, 255, 255, 0.85);
+        }
+
+        .sidebar {
+            background-color: rgba(255, 255, 255, 0.95);
+            border-right: 1px solid #C2A887;
+        }
+
+        @media (max-width: 768px) {
+            .background-container::before {
+                height: 100%;
+            }
         }
     </style>
+
+
+
     <script>
         tailwind.config = {
             theme: {
@@ -105,17 +141,21 @@
         </div>
     </nav>
 
-    <!-- Main Content -->
-    <div class="ml-64 min-h-screen p-8 flex items-center justify-center">
-        <div class="bg-white/50 backdrop-blur-sm rounded-xl shadow-2xl p-8 max-w-4xl w-full">
-            <div class="flex flex-col items-center justify-center space-y-8">
-                <!-- Logo Container -->
-                <div class="text-center">
-                    <h1 class="text-4xl md:text-5xl font-bold text-gray-800 mb-4">Welcome to I/O Food Hub Dalaguete</h1>
-                    <p class="text-lg text-gray-600 max-w-md mx-auto">
-                        Tap here to chose your profile to login
-                    </p>
-                </div>
+    <!-- Add background containers -->
+    <div class="background-container"></div>
+    <div class="background-overlay"></div>
+
+    <!-- Update the main content structure -->
+    <div class="content-container">
+        <!-- Main Content -->
+        <div class="ml-64 min-h-screen p-8 flex items-center justify-center">
+            <div class="main-content rounded-xl shadow-2xl p-8 max-w-4xl w-full animate-fadeInUp">
+                <div class="flex flex-col items-center justify-center space-y-8">
+                    <!-- Logo Container -->
+                    <div class="text-center">
+                        <h1 class="text-4xl md:text-5xl font-bold text-gray-800 mb-4">Welcome to I/O Food Hub Dalaguete</h1>
+                       
+                    </div>
 
                     <!-- Get Started Button -->
                     <a href="{% url 'login' %}" 
@@ -137,7 +177,7 @@
         </div>
 
         <!-- Footer -->
-        <div class="ml-64 text-center py-4 text-brown-700">
+        <div class="ml-64 text-center py-4 text-white">
             <p>&copy; 2024 I/O Food Hub. All rights reserved.</p>
         </div>
     </div>

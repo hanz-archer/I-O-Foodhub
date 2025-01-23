@@ -103,6 +103,17 @@
                             <input type="password" name="password" required
                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500">
                         </div>
+                        
+                        <!-- Status checkbox will be added here dynamically in edit mode -->
+                        <div id="statusCheckboxContainer" class="hidden col-span-2">
+                            <label class="flex items-center space-x-2">
+                                <input type="checkbox" 
+                                       name="is_active" 
+                                       class="w-4 h-4 text-[#96714D] border-gray-300 rounded focus:ring-[#96714D]"
+                                       checked>
+                                <span class="text-sm font-medium text-gray-900">Active Employee</span>
+                            </label>
+                        </div>
                     </div>
 
                     <input type="hidden" name="employee_id" id="employee_id">
@@ -200,17 +211,23 @@ function openAddModal() {
     
     // Make password required for new employees
     const passwordField = document.getElementById('employeeForm').querySelector('[name="password"]');
-    passwordField.required = true;
-    passwordField.placeholder = 'Enter password';
+    if (passwordField) {
+        passwordField.required = true;
+        passwordField.placeholder = 'Enter password';
+        passwordField.name = 'password';
+    }
     
     // Set submit button text to "Add Employee"
     document.getElementById('submitButton').textContent = 'Add Employee';
     
-    // Remove any existing status toggle
-    const existingToggle = document.querySelector('.status-toggle');
-    if (existingToggle) {
-        existingToggle.remove();
+    // Hide status checkbox in add mode
+    const statusContainer = document.getElementById('statusCheckboxContainer');
+    if (statusContainer) {
+        statusContainer.classList.add('hidden');
     }
+
+    // Set is_edit to false
+    document.getElementById('is_edit').value = 'false';
     
     document.getElementById('employeeModal').classList.remove('hidden');
 }
@@ -225,13 +242,10 @@ function handleSubmit(event) {
     const form = event.target;
     const formData = new FormData(form);
     const isEdit = document.getElementById('is_edit').value === 'true';
-
-    // Get employee details for confirmation
-    const firstname = formData.get('firstname');
-    const lastname = formData.get('lastname');
-    const position = formData.get('position');
-    const email = formData.get('email') || 'Not provided';
-    const username = formData.get('username');
+    
+    // Ensure checkbox value is properly set
+    const isActive = form.querySelector('[name="is_active"]').checked;
+    formData.set('is_active', isActive ? 'on' : 'off');
 
     // Show confirmation dialog
     Swal.fire({
@@ -240,14 +254,12 @@ function handleSubmit(event) {
             <div class="text-left">
                 <p class="mb-3">Please review the employee details:</p>
                 <div class="bg-gray-50 p-4 rounded-lg space-y-2">
-                    <p><strong>Name:</strong> ${firstname} ${lastname}</p>
-                    <p><strong>Position:</strong> ${position}</p>
-                    <p><strong>Email:</strong> ${email}</p>
-                    <p><strong>Username:</strong> ${username}</p>
+                    <p><strong>Name:</strong> ${formData.get('firstname')} ${formData.get('lastname')}</p>
+                    <p><strong>Position:</strong> ${formData.get('position')}</p>
+                    <p><strong>Email:</strong> ${formData.get('email') || 'Not provided'}</p>
+                    <p><strong>Username:</strong> ${formData.get('username')}</p>
+                    ${isEdit ? `<p><strong>Status:</strong> <span class="${isActive ? 'text-green-600' : 'text-red-600'}">${isActive ? 'Active' : 'Inactive'}</span></p>` : ''}
                 </div>
-                <p class="mt-3 text-sm text-gray-600">
-                    ${isEdit ? 'Update this employee\'s information?' : 'Add this employee to the system?'}
-                </p>
             </div>
         `,
         icon: 'question',
@@ -261,16 +273,9 @@ function handleSubmit(event) {
         }
     }).then((result) => {
         if (result.isConfirmed) {
-            // Show loading state
-            Swal.fire({
-                title: isEdit ? 'Updating...' : 'Adding Employee...',
-                html: 'Please wait...',
-                allowOutsideClick: false,
-                showConfirmButton: false,
-                didOpen: () => {
-                    Swal.showLoading();
-                }
-            });
+            // Add CSRF token
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+            formData.set('csrfmiddlewaretoken', csrfToken);
 
             // Submit the form
             fetch(form.action, {
@@ -290,7 +295,6 @@ function handleSubmit(event) {
                         timer: 1500,
                         showConfirmButton: false
                     }).then(() => {
-                        closeModal();
                         window.location.reload();
                     });
                 } else {
@@ -309,91 +313,73 @@ function handleSubmit(event) {
 }
 
 function openEditModal(employeeId) {
-    fetch(`/stall-admin/employees/${employeeId}/edit/`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.status === 'success') {
-                const employee = data.employee;
-                
-                // Clear the form first
-                document.getElementById('employeeForm').reset();
-                
-                // Set the correct title and submit button text
-                document.getElementById('modalTitle').textContent = `Edit Employee: ${employee.firstname} ${employee.lastname}`;
-                document.getElementById('submitButton').textContent = 'Save Changes';  // Update button text
-                
-                // Set the correct form action
-                const form = document.getElementById('employeeForm');
-                form.action = `/stall-admin/employees/${employeeId}/edit/`;
-                
-                // Fill form with employee data
-                const inputs = {
-                    'firstname': employee.firstname,
-                    'middle_initial': employee.middle_initial || '',
-                    'lastname': employee.lastname,
-                    'birthdate': employee.birthdate,
-                    'address': employee.address,
-                    'contact_number': employee.contact_number,
-                    'email': employee.email || '',
-                    'religion': employee.religion || '',
-                    'position': employee.position,
-                    'username': employee.username
-                };
-                
-                // Set values and restore cursor styles
-                Object.entries(inputs).forEach(([name, value]) => {
-                    const input = form.querySelector(`[name="${name}"]`);
-                    if (input) {
-                        input.value = value;
-                        input.classList.remove('cursor-not-allowed');
-                        input.classList.add(input.type === 'text' || input.type === 'password' ? 'cursor-text' : 'cursor-pointer');
-                    }
-                });
-                
-                // Handle password field for edit mode
-                const passwordField = form.querySelector('[name="password"]');
-                if (passwordField) {
-                    passwordField.name = 'new_password';
-                    passwordField.required = false;
-                    passwordField.value = '';
-                    passwordField.placeholder = 'Enter new password (leave blank to keep current)';
-                    passwordField.classList.remove('cursor-not-allowed');
-                    passwordField.classList.add('cursor-text');
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    
+    fetch(`/stall-admin/employees/${employeeId}/edit/`, {
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': csrfToken
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.status === 'success') {
+            const employee = data.employee;
+            const form = document.getElementById('employeeForm');
+            
+            // Reset and setup form
+            form.reset();
+            form.action = `/stall-admin/employees/${employeeId}/edit/`;
+            document.getElementById('modalTitle').textContent = `Edit Employee: ${employee.firstname} ${employee.lastname}`;
+            document.getElementById('submitButton').textContent = 'Save Changes';
+            document.getElementById('is_edit').value = 'true';
+            document.getElementById('employee_id').value = employeeId;
+
+            // Show and set status checkbox in edit mode
+            const statusContainer = document.getElementById('statusCheckboxContainer');
+            if (statusContainer) {
+                statusContainer.classList.remove('hidden');
+                const statusCheckbox = statusContainer.querySelector('[name="is_active"]');
+                if (statusCheckbox) {
+                    statusCheckbox.checked = employee.is_active;
                 }
-                
-                // Add status toggle for edit mode
-                const accountSection = form.querySelector('.grid:last-of-type');
-                if (!form.querySelector('.status-toggle')) {
-                    const statusToggle = document.createElement('div');
-                    statusToggle.className = 'flex items-center gap-4 mt-4 status-toggle';
-                    statusToggle.innerHTML = `
-                        <label class="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" name="is_active" class="sr-only peer" 
-                                   ${employee.is_active ? 'checked' : ''}>
-                            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 
-                                      peer-focus:ring-blue-300 rounded-full peer 
-                                      peer-checked:after:translate-x-full peer-checked:after:border-white 
-                                      after:content-[''] after:absolute after:top-[2px] after:left-[2px] 
-                                      after:bg-white after:border-gray-300 after:border after:rounded-full 
-                                      after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600 cursor-pointer"></div>
-                            <span class="ml-3 text-sm font-medium text-gray-900">Active Status</span>
-                        </label>
-                    `;
-                    accountSection.appendChild(statusToggle);
-                }
-                
-                document.getElementById('employeeModal').classList.remove('hidden');
-            } else {
-                throw new Error(data.message);
             }
-        })
-        .catch(error => {
-            Swal.fire({
-                icon: 'error',
-                title: 'Error',
-                text: error.message
+
+            // Fill form with employee data
+            Object.entries(employee).forEach(([key, value]) => {
+                const input = form.querySelector(`[name="${key}"]`);
+                if (input && key !== 'is_active') {
+                    input.value = value || '';
+                }
             });
+
+            // Handle password field
+            const passwordField = form.querySelector('[name="password"]');
+            if (passwordField) {
+                passwordField.name = 'new_password';
+                passwordField.required = false;
+                passwordField.value = '';
+                passwordField.placeholder = 'Enter new password (leave blank to keep current)';
+            }
+
+            // Show the modal
+            document.getElementById('employeeModal').classList.remove('hidden');
+        } else {
+            throw new Error(data.message);
+        }
+    })
+    .catch(error => {
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: error.message || 'An error occurred while fetching employee data.'
         });
+    });
 }
 
 function confirmDelete(employeeId, employeeName) {
@@ -419,14 +405,20 @@ function confirmDelete(employeeId, employeeName) {
                 }
             });
 
-            // Send delete request
+            // Send delete request with CSRF token
             fetch(`/stall-admin/employees/${employeeId}/delete/`, {
                 method: 'POST',
                 headers: {
-                    'X-Requested-With': 'XMLHttpRequest'
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
                 }
             })
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
             .then(data => {
                 if (data.status === 'success') {
                     Swal.fire({
@@ -446,7 +438,7 @@ function confirmDelete(employeeId, employeeName) {
                 Swal.fire({
                     icon: 'error',
                     title: 'Error',
-                    text: error.message
+                    text: error.message || 'An error occurred while deleting the employee.'
                 });
             });
         }

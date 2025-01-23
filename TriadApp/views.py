@@ -335,7 +335,8 @@ def login_view(request):
                     return JsonResponse({
                         'success': True,
                         'redirect_url': reverse('super_admin'),
-                        'name': user.first_name
+                        'name': user.first_name,
+                        'userType': 'superadmin'
                     })
             except CustomUser.DoesNotExist:
                 pass
@@ -368,7 +369,9 @@ def login_view(request):
                     return JsonResponse({
                         'success': True,
                         'redirect_url': reverse('admin_dashboard'),
-                        'name': f"{admin.firstname} {admin.lastname}"
+                        'name': f"{admin.firstname} {admin.lastname}",
+                        'userType': 'admin',
+                        'stallName': admin.stall.name
                     })
             except AdminProfile.DoesNotExist:
                 pass
@@ -413,7 +416,9 @@ def login_view(request):
                     return JsonResponse({
                         'success': True,
                         'redirect_url': reverse('employee_dashboard'),
-                        'name': f"{employee.firstname} {employee.lastname}"
+                        'name': f"{employee.firstname} {employee.lastname}",
+                        'userType': 'employee',
+                        'stallName': employee.stall.name
                     })
             except Employee.DoesNotExist:
                 pass

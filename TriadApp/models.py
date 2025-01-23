@@ -90,14 +90,14 @@ class Supplier(models.Model):
     
     stall = models.ForeignKey(Stall, on_delete=models.CASCADE)
     firstname = models.CharField(max_length=100)
-    middle_initial = models.CharField(max_length=1)
+    middle_initial = models.CharField(max_length=1, null=True, blank=True)
     lastname = models.CharField(max_length=100)
     contact_person = models.CharField(max_length=200)
     license_number = models.CharField(max_length=50, unique=True)
     address = models.TextField(max_length=50)
     contact_number = models.CharField(max_length=15)
     email_address = models.EmailField()
-    contract_start_date = models.DateField(default=date.today)
+    contract_start_date = models.DateField(null=True, blank=True)
     contract_end_date = models.DateField()
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='active')
 
@@ -464,33 +464,11 @@ class StallContract(models.Model):
 
 class StallPayment(models.Model):
     contract = models.ForeignKey(StallContract, on_delete=models.CASCADE, related_name='payments')
-    payment_date = models.DateField(auto_now_add=True)  # Automatically set to current date
+    payment_date = models.DateField(auto_now_add=True)
     amount_paid = models.DecimalField(max_digits=10, decimal_places=2)
     receipt_number = models.CharField(max_length=50, unique=True)
     notes = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    
-    def update_contract_status(self):
-        contract = self.contract
-        current_date = timezone.now().date()
-        
-        # Get all payments for this contract, including the current one
-        total_paid = contract.payments.aggregate(
-            total=models.Sum('amount_paid'))['total'] or 0
-        if not self.pk:  # If this is a new payment
-            total_paid += self.amount_paid
-            
-        total_expected = contract.monthly_rate * contract.duration_months
-        
-        # Update contract status based on payments and due date
-        if total_paid >= total_expected:
-            contract.payment_status = 'paid'
-        elif contract.end_date < current_date:
-            contract.payment_status = 'overdue'
-        else:
-            contract.payment_status = 'pending'
-        
-        contract.save()
     
     def save(self, *args, **kwargs):
         # Generate receipt number if not provided
@@ -500,10 +478,30 @@ class StallPayment(models.Model):
             random_suffix = ''.join(random.choices(string.digits, k=4))
             self.receipt_number = f"{prefix}-{timestamp}-{random_suffix}"
         
-        # Update contract payment status
-        self.update_contract_status()
-        
+        # Save the payment first
         super().save(*args, **kwargs)
+        
+        # Calculate total payments after saving
+        payment_count = self.contract.payments.count()
+        total_paid = self.contract.payments.aggregate(
+            total=models.Sum('amount_paid'))['total'] or Decimal('0')
+        
+        # Update contract status based on total paid
+        if total_paid >= self.contract.total_amount:
+            self.contract.payment_status = 'paid'
+        else:
+            self.contract.payment_status = 'pending'
+        
+        # Activate stall after 2 payments
+        if payment_count >= 2 and not self.contract.stall.is_active:
+            self.contract.stall.is_active = True
+            self.contract.stall.save()
+            
+            # Set contract start date if not set
+            if not self.contract.start_date:
+                self.contract.start_date = timezone.now().date()
+        
+        self.contract.save()
     
     def __str__(self):
         return f"Payment for {self.contract.stall.name} - {self.payment_date}"

@@ -77,8 +77,16 @@
                             {{ supplier.contract_start_date|date:"M d, Y" }} - 
                             {{ supplier.contract_end_date|date:"M d, Y" }}
                         </td>
-                        <td class="px-6 py-4 text-sm text-gray-600">
-                            {{ supplier.status }}
+                        <td class="px-6 py-4 text-sm">
+                            {% if supplier.status == 'active' %}
+                                <span class="px-2 py-1 rounded-full text-sm bg-green-100 text-green-800 font-medium">
+                                    {{ supplier.status }}
+                                </span>
+                            {% else %}
+                                <span class="px-2 py-1 rounded-full text-sm bg-red-100 text-red-800 font-medium">
+                                    {{ supplier.status }}
+                                </span>
+                            {% endif %}
                         </td>
                         <td class="px-6 py-4 text-sm">
                             <button onclick="openEditModal('{{ supplier.id }}')" 
@@ -117,8 +125,15 @@
                         <input type="text" name="firstname" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500">
                     </div>
                     <div class="mb-4">
-                        <label class="block text-gray-700 text-sm font-bold mb-2">Middle Initial</label>
-                        <input type="text" name="middle_initial" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500">
+                        <label class="block text-gray-700 text-sm font-bold mb-2">
+                            Middle Initial
+                            <span class="text-sm font-normal text-gray-500">(Optional)</span>
+                        </label>
+                        <input type="text" 
+                               name="middle_initial" 
+                               maxlength="1"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#96714D] focus:border-transparent"
+                               placeholder="Optional">
                     </div>
                     <div class="mb-4">
                         <label class="block text-gray-700 text-sm font-bold mb-2">Last Name</label>
@@ -145,8 +160,16 @@
                         <input type="email" name="email_address" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500">
                     </div>
                     <div class="mb-4">
-                        <label class="block text-gray-700 text-sm font-bold mb-2">Contract End Date</label>
-                        <input type="date" name="contract_end_date" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500">
+                        <label class="block text-gray-700 text-sm font-bold mb-2">Contract Start Date*</label>
+                        <input type="date" 
+                               name="contract_start_date" 
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#96714D] focus:border-transparent">
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2">Contract End Date*</label>
+                        <input type="date" 
+                               name="contract_end_date" 
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#96714D] focus:border-transparent">
                     </div>
                     <div class="mb-4">
                         <label class="block text-gray-700 text-sm font-bold mb-2">Address</label>
@@ -269,6 +292,7 @@
             'contact_number': 'Contact Number',
             'email_address': 'Email Address',
             'address': 'Address',
+            'contract_start_date': 'Contract Start Date',
             'contract_end_date': 'Contract End Date'
         };
 
@@ -294,6 +318,20 @@
 
         if (hasError) return;
 
+        // Validate dates
+        const startDate = new Date(formData.get('contract_start_date'));
+        const endDate = new Date(formData.get('contract_end_date'));
+
+        if (startDate > endDate) {
+            Swal.fire({
+                title: 'Invalid Dates',
+                text: 'Contract start date must be before end date',
+                icon: 'error',
+                confirmButtonColor: '#96714D'
+            });
+            return;
+        }
+
         // Get form values for confirmation message
         const firstName = formValues.firstname;
         const middleInitial = formData.get('middle_initial');
@@ -303,12 +341,10 @@
         const contactNumber = formValues.contact_number;
         const email = formValues.email_address;
         const address = formValues.address;
-        const endDate = formValues.contract_end_date;
         
         // Calculate initial status
         const today = new Date();
-        const contractEndDate = new Date(endDate);
-        const status = contractEndDate < today ? 'Ended' : 'Active';
+        const status = endDate < today ? 'Ended' : 'Active';
         
         // Create confirmation message with details
         const confirmationDetails = `
@@ -320,7 +356,7 @@
                 <p><span class="font-medium">Contact Number:</span> ${contactNumber}</p>
                 <p><span class="font-medium">Email:</span> ${email}</p>
                 <p><span class="font-medium">Address:</span> ${address}</p>
-                <p><span class="font-medium">Contract End:</span> ${contractEndDate.toLocaleDateString()}</p>
+                <p><span class="font-medium">Contract Period:</span> ${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()}</p>
                 <p><span class="font-medium">Status:</span> 
                     <span class="px-2 py-1 rounded-full text-sm ${status === 'Active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
                         ${status}
@@ -449,8 +485,16 @@
                         ${new Date(supplier.contract_start_date).toLocaleDateString()} - 
                         ${new Date(supplier.contract_end_date).toLocaleDateString()}
                     </td>
-                    <td class="px-6 py-4 text-sm text-gray-600">
-                        ${status}
+                    <td class="px-6 py-4 text-sm">
+                        {% if supplier.status == 'Active' %}
+                            <span class="px-2 py-1 rounded-full text-sm bg-green-100 text-green-800 font-medium">
+                                {{ supplier.status }}
+                            </span>
+                        {% else %}
+                            <span class="px-2 py-1 rounded-full text-sm bg-red-100 text-red-800 font-medium">
+                                {{ supplier.status }}
+                            </span>
+                        {% endif %}
                     </td>
                     <td class="px-6 py-4 text-sm">
                         <button onclick="openEditModal('${supplier.id}')" 

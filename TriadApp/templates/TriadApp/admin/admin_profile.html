@@ -1,108 +1,269 @@
 {% extends 'TriadApp/admin/admin.html' %}
 
 {% block content %}
-<div class="flex-1 p-6 ">
-    <div class="max-w-3xl mx-auto bg-gray-50 rounded-lg shadow p-6">
-        <h2 class="text-2xl font-bold mb-6">Admin Profile</h2>
+<div class="flex-1 p-6">
+    <div class="max-w-3xl mx-auto bg-white rounded-lg shadow-lg p-8">
+        <h2 class="text-2xl font-bold mb-8 text-[#96714D]">Admin Profile</h2>
         
-        {% if messages %}
-        <div class="mb-4">
-            {% for message in messages %}
-            <div class="p-4 rounded-md {% if message.tags == 'success' %}bg-green-100 text-green-700{% else %}bg-red-100 text-red-700{% endif %}">
-                {{ message }}
-            </div>
-            {% endfor %}
-        </div>
-        {% endif %}
-
-        <form method="POST" class="space-y-6 ">
+        <form method="POST" class="space-y-8">
             {% csrf_token %}
             
             <!-- Personal Information -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                    <label class="block text-gray-700 text-sm font-bold mb-2">First Name*</label>
-                    <input type="text" name="firstname" value="{{ admin.firstname }}" required
-                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500">
-                </div>
-                
-                <div>
-                    <label class="block text-gray-700 text-sm font-bold mb-2">Middle Initial</label>
-                    <input type="text" name="middle_initial" value="{{ admin.middle_initial|default:'' }}" maxlength="1"
-                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500">
-                </div>
-                
-                <div>
-                    <label class="block text-gray-700 text-sm font-bold mb-2">Last Name*</label>
-                    <input type="text" name="lastname" value="{{ admin.lastname }}" required
-                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500">
-                </div>
-                
-                <div>
-                    <label class="block text-gray-700 text-sm font-bold mb-2">Age*</label>
-                    <input type="number" name="age" value="{{ admin.age }}" required
-                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500">
-                </div>
-                
-                <div>
-                    <label class="block text-gray-700 text-sm font-bold mb-2">Birthdate*</label>
-                    <input type="date" name="birthdate" value="{{ admin.birthdate|date:'Y-m-d' }}" required
-                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500">
-                </div>
-                
-                <div>
-                    <label class="block text-gray-700 text-sm font-bold mb-2">Contact Number*</label>
-                    <input type="tel" name="contact_number" value="{{ admin.contact_number }}" required
-                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500">
+            <div class="bg-gray-50 p-6 rounded-lg space-y-6">
+                <h3 class="text-lg font-semibold text-[#7D5E40] mb-4">Personal Information</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-gray-700 text-sm font-bold mb-2">First Name*</label>
+                        <input type="text" name="firstname" value="{{ admin.firstname }}" required
+                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#96714D] focus:border-transparent transition duration-150">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-gray-700 text-sm font-bold mb-2">Middle Initial</label>
+                        <input type="text" name="middle_initial" value="{{ admin.middle_initial|default:'' }}" maxlength="1"
+                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#96714D] focus:border-transparent transition duration-150">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-gray-700 text-sm font-bold mb-2">Last Name*</label>
+                        <input type="text" name="lastname" value="{{ admin.lastname }}" required
+                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#96714D] focus:border-transparent transition duration-150">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-gray-700 text-sm font-bold mb-2">Age*</label>
+                        <input type="number" name="age" value="{{ admin.age }}" required
+                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#96714D] focus:border-transparent transition duration-150">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-gray-700 text-sm font-bold mb-2">Birthdate*</label>
+                        <input type="date" name="birthdate" value="{{ admin.birthdate|date:'Y-m-d' }}" required
+                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#96714D] focus:border-transparent transition duration-150">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-gray-700 text-sm font-bold mb-2">Contact Number*</label>
+                        <input type="tel" name="contact_number" value="{{ admin.contact_number }}" required
+                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#96714D] focus:border-transparent transition duration-150">
+                    </div>
                 </div>
             </div>
 
             <!-- Contact Information -->
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-gray-700 text-sm font-bold mb-2">Address*</label>
-                    <textarea name="address" required rows="3"
-                              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500">{{ admin.address }}</textarea>
-                </div>
-                
-                <div>
-                    <label class="block text-gray-700 text-sm font-bold mb-2">Email</label>
-                    <input type="email" name="email" value="{{ admin.email }}"
-                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500">
+            <div class="bg-gray-50 p-6 rounded-lg space-y-6">
+                <h3 class="text-lg font-semibold text-[#7D5E40] mb-4">Contact Information</h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-gray-700 text-sm font-bold mb-2">Address*</label>
+                        <textarea name="address" required rows="3"
+                                  class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#96714D] focus:border-transparent transition duration-150">{{ admin.address }}</textarea>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-gray-700 text-sm font-bold mb-2">Email</label>
+                        <input type="email" name="email" value="{{ admin.email }}"
+                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#96714D] focus:border-transparent transition duration-150">
+                    </div>
                 </div>
             </div>
 
             <!-- Account Information -->
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-gray-700 text-sm font-bold mb-2">Username*</label>
-                    <input type="text" value="{{ admin.username }}" disabled
-                           class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100">
-                    <p class="text-sm text-gray-500 mt-1">Username cannot be changed</p>
-                </div>
-                
-                <div>
-                    <label class="block text-gray-700 text-sm font-bold mb-2">Change Password</label>
-                    <input type="password" name="new_password" 
-                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-                           placeholder="Leave blank to keep current password">
-                </div>
-                
-                <div>
-                    <label class="block text-gray-700 text-sm font-bold mb-2">Confirm New Password</label>
-                    <input type="password" name="confirm_password"
-                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-                           placeholder="Leave blank to keep current password">
+            <div class="bg-gray-50 p-6 rounded-lg space-y-6">
+                <h3 class="text-lg font-semibold text-[#7D5E40] mb-4">Account Information</h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-gray-700 text-sm font-bold mb-2">Username*</label>
+                        <input type="text" value="{{ admin.username }}" disabled
+                               class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100">
+                        <p class="text-sm text-gray-500 mt-1">Username cannot be changed</p>
+                    </div>
+                    
+                    <div class="relative">
+                        <label class="block text-gray-700 text-sm font-bold mb-2">Change Password</label>
+                        <input type="password" name="new_password" id="new_password"
+                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#96714D] focus:border-transparent transition duration-150"
+                               placeholder="Leave blank to keep current password">
+                        <button type="button" onclick="togglePassword('new_password')" 
+                                class="absolute right-2 top-8 text-gray-500 hover:text-gray-700">
+                            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                      d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                        </button>
+                    </div>
+                    
+                    <div class="relative">
+                        <label class="block text-gray-700 text-sm font-bold mb-2">Confirm New Password</label>
+                        <input type="password" name="confirm_password" id="confirm_password"
+                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#96714D] focus:border-transparent transition duration-150"
+                               placeholder="Leave blank to keep current password">
+                        <button type="button" onclick="togglePassword('confirm_password')" 
+                                class="absolute right-2 top-8 text-gray-500 hover:text-gray-700">
+                            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                      d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                        </button>
+                    </div>
                 </div>
             </div>
 
-            <div class="flex justify-end space-x-4">
-                <button type="submit"
-                        class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-md">
-                    Save Changes
+            <div class="flex justify-end mt-8">
+                <button type="button" onclick="confirmUpdate()"
+                        class="bg-[#96714D] hover:bg-[#7D5E40] text-black font-semibold py-3 px-6 rounded-lg transition duration-150 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#96714D] shadow-md">
+                    <div class="flex items-center space-x-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                        <span>Save Changes</span>
+                    </div>
                 </button>
             </div>
         </form>
     </div>
 </div>
+
+<script>
+function togglePassword(inputId) {
+    const input = document.getElementById(inputId);
+    input.type = input.type === 'password' ? 'text' : 'password';
+}
+
+function confirmUpdate() {
+    const form = document.querySelector('form');
+    const formData = new FormData(form);
+    
+    // Validate required fields
+    const requiredFields = ['firstname', 'lastname', 'age', 'birthdate', 'address', 'contact_number'];
+    for (let field of requiredFields) {
+        if (!formData.get(field)) {
+            Swal.fire({
+                title: 'Required Field Missing',
+                text: `Please fill in all required fields marked with *`,
+                icon: 'warning',
+                confirmButtonColor: '#96714D',
+                confirmButtonText: 'OK',
+                background: '#fff',
+                iconColor: '#96714D',
+                showClass: {
+                    popup: 'animate__animated animate__fadeInDown'
+                }
+            });
+            return;
+        }
+    }
+    
+    // Check password match if changing password
+    const newPassword = formData.get('new_password');
+    const confirmPassword = formData.get('confirm_password');
+    if (newPassword || confirmPassword) {
+        if (newPassword !== confirmPassword) {
+            Swal.fire({
+                title: 'Password Mismatch',
+                text: 'The passwords you entered do not match',
+                icon: 'error',
+                confirmButtonColor: '#96714D',
+                confirmButtonText: 'Try Again',
+                background: '#fff',
+                showClass: {
+                    popup: 'animate__animated animate__shakeX'
+                }
+            });
+            return;
+        }
+        if (newPassword.length < 8) {
+            Swal.fire({
+                title: 'Password Too Short',
+                text: 'Password must be at least 8 characters long',
+                icon: 'warning',
+                confirmButtonColor: '#96714D',
+                confirmButtonText: 'OK',
+                background: '#fff',
+                iconColor: '#96714D'
+            });
+            return;
+        }
+    }
+
+    // Show confirmation dialog
+    Swal.fire({
+        title: 'Save Changes?',
+        text: 'Are you sure you want to update your profile?',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, Save Changes',
+        cancelButtonText: 'Cancel',
+        confirmButtonColor: '#96714D',
+        cancelButtonColor: '#d33',
+        background: '#fff',
+        showClass: {
+            popup: 'animate__animated animate__fadeInDown'
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            // Show loading state
+            Swal.fire({
+                title: 'Updating Profile',
+                text: 'Please wait while we save your changes...',
+                allowOutsideClick: false,
+                showConfirmButton: false,
+                background: '#fff',
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+
+            // Submit form data using fetch
+            fetch(form.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                Swal.fire({
+                    title: 'Success!',
+                    text: 'Profile updated successfully!',
+                    icon: 'success',
+                    confirmButtonColor: '#96714D',
+                    background: '#fff',
+                    showClass: {
+                        popup: 'animate__animated animate__fadeInDown'
+                    }
+                }).then(() => {
+                    if (data.password_changed) {
+                        window.location.href = "{% url 'login' %}";
+                    } else {
+                        window.location.reload();
+                    }
+                });
+            })
+            .catch(error => {
+                Swal.fire({
+                    title: 'Error!',
+                    text: error.message || 'An unexpected error occurred. Please try again.',
+                    icon: 'error',
+                    confirmButtonColor: '#96714D',
+                    background: '#fff',
+                    showClass: {
+                        popup: 'animate__animated animate__shakeX'
+                    }
+                });
+            });
+        }
+    });
+}
+</script>
 {% endblock %}

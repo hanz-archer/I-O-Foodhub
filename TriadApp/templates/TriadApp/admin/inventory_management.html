@@ -76,7 +76,23 @@
                             {% endif %}
                         </td>
                         <td class="px-6 py-4 text-sm text-gray-600">₱{{ item.price }}</td>
-                        <td class="px-6 py-4 text-sm text-gray-600">{{ item.quantity }}</td>
+                        <td class="px-6 py-4 text-sm">
+                            {% if item.quantity < 10 %}
+                                <div class="flex items-center space-x-2">
+                                    <span class="px-2 py-1 rounded-full text-sm bg-red-100 text-red-800 font-medium">
+                                        {{ item.quantity }}
+                                    </span>
+                                    <span class="text-red-600">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                            <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                                        </svg>
+                                    </span>
+                                    <span class="text-red-600 text-xs font-medium">Low Stock</span>
+                                </div>
+                            {% else %}
+                                <span class="text-gray-600">{{ item.quantity }}</span>
+                            {% endif %}
+                        </td>
                         <td class="px-6 py-4 text-sm text-gray-600">
                             <ul class="list-disc list-inside">
                                 {% for item_supply in item.item_supplies.all %}
@@ -154,8 +170,14 @@
                     </div>
                     <div class="mb-4">
                         <label class="block text-gray-700 text-sm font-bold mb-2">Size (Optional)</label>
-                        <input type="text" name="size" 
-                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500">
+                        <select name="size" 
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#96714D] focus:border-transparent bg-white">
+                            <option value="">Select Size</option>
+                            <option value="S">S (Small)</option>
+                            <option value="M">M (Medium)</option>
+                            <option value="L">L (Large)</option>
+                            <option value="XL">XL (Extra Large)</option>
+                        </select>
                     </div>
                     <div class="mb-4">
                         <label class="block text-gray-700 text-sm font-bold mb-2">Measurement (Optional)</label>

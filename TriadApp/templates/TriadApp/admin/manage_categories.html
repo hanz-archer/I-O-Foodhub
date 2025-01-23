@@ -12,32 +12,34 @@
     </div>
 
     <!-- Categories Table -->
-    <div class="bg-white shadow-md rounded-lg overflow-hidden">
-        <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-50">
-                <tr class="bg-gray-800 text-white">
-                    <th class="px-6 py-3 text-left text-xs font-medium  uppercase tracking-wider">Name</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Actions</th>
-                </tr>
-            </thead>
-            <tbody class="bg-white divide-y divide-gray-200" id="categoriesTableBody">
-                {% for category in categories %}
-                <tr >
-                    <td class="px-6 py-4 whitespace-nowrap">{{ category.name }}</td>
-                    <td class="px-6 py-4 text-sm">
-                        <button onclick="openEditModal('{{ category.id }}')" 
-                                class="text-blue-600 hover:text-blue-700 font-medium mr-3 cursor-pointer">
-                            Edit
-                        </button>
-                        <button onclick="confirmDelete('{{ category.id }}', '{{ category.name|escapejs }}')" 
-                                class="text-red-600 hover:text-red-700 font-medium cursor-pointer">
-                            Delete
-                        </button>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+    <div class="max-w-3xl mx-auto">
+        <div class="bg-white shadow-md rounded-lg overflow-hidden">
+            <table class="w-full divide-y divide-gray-200">
+                <thead class="bg-black">
+                    <tr class="bg-[#96714D] text-white">
+                        <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider w-2/3">Name</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider w-1/3">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200" id="categoriesTableBody">
+                    {% for category in categories %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4">{{ category.name }}</td>
+                        <td class="px-6 py-4 text-sm">
+                            <button onclick="openEditModal('{{ category.id }}')" 
+                                    class="text-[#96714D] hover:text-[#7D5E40] font-medium mr-3 cursor-pointer">
+                                Edit
+                            </button>
+                            <button onclick="confirmDelete('{{ category.id }}', '{{ category.name|escapejs }}')" 
+                                    class="text-red-600 hover:text-red-700 font-medium cursor-pointer">
+                                Delete
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 
@@ -159,41 +161,79 @@ function handleSubmit(event) {
     const form = event.target;
     const formData = new FormData(form);
     
-    const url = editingCategoryId 
-        ? `/stall-admin/categories/edit/${editingCategoryId}/`
-        : '/stall-admin/categories/add/';
-    
-    fetch(url, {
-        method: 'POST',
-        body: formData,
-        headers: {
-            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
-            'X-Requested-With': 'XMLHttpRequest'
+    // Show confirmation dialog first
+    Swal.fire({
+        title: editingCategoryId ? 'Update Category?' : 'Add Category?',
+        text: editingCategoryId ? 'Are you sure you want to update this category?' : 'Are you sure you want to add this category?',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: editingCategoryId ? 'Yes, Update' : 'Yes, Add',
+        cancelButtonText: 'Cancel',
+        confirmButtonColor: '#96714D',
+        cancelButtonColor: '#d33',
+        background: '#fff',
+        showClass: {
+            popup: 'animate__animated animate__fadeInDown'
         }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.status === 'success') {
-            closeModal();
+    }).then((result) => {
+        if (result.isConfirmed) {
+            // Show loading state
             Swal.fire({
-                icon: 'success',
-                title: 'Success!',
-                text: data.message,
+                title: editingCategoryId ? 'Updating Category...' : 'Adding Category...',
+                text: 'Please wait',
+                allowOutsideClick: false,
                 showConfirmButton: false,
-                timer: 1500
-            }).then(() => {
-                window.location.reload();
+                background: '#fff',
+                didOpen: () => {
+                    Swal.showLoading();
+                }
             });
-        } else {
-            throw new Error(data.message);
+
+            const url = editingCategoryId 
+                ? `/stall-admin/categories/edit/${editingCategoryId}/`
+                : '/stall-admin/categories/add/';
+            
+            fetch(url, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    closeModal();
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Success!',
+                        text: data.message,
+                        confirmButtonColor: '#96714D',
+                        background: '#fff',
+                        showClass: {
+                            popup: 'animate__animated animate__fadeInDown'
+                        }
+                    }).then(() => {
+                        window.location.reload();
+                    });
+                } else {
+                    throw new Error(data.message);
+                }
+            })
+            .catch(error => {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error!',
+                    text: error.message,
+                    confirmButtonColor: '#96714D',
+                    background: '#fff',
+                    showClass: {
+                        popup: 'animate__animated animate__shakeX'
+                    }
+                });
+            });
         }
-    })
-    .catch(error => {
-        Swal.fire({
-            icon: 'error',
-            title: 'Error!',
-            text: error.message
-        });
     });
 }
 

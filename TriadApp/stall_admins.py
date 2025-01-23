@@ -74,13 +74,22 @@ def admin_profile(request):
                     admin.password = hashed_password.decode('utf-8')
                 
                 admin.save()
-                messages.success(request, 'Profile updated successfully!')
+                return JsonResponse({
+                    'status': 'success',
+                    'message': 'Profile updated successfully!',
+                    'password_changed': bool(new_password)
+                }, status=200)
                 
             except ValidationError as e:
-                messages.error(request, str(e))
+                return JsonResponse({
+                    'status': 'error',
+                    'message': str(e)
+                }, status=400)
             except Exception as e:
-                messages.error(request, 'An error occurred while updating your profile.')
-                print(f"Error updating profile: {str(e)}")
+                return JsonResponse({
+                    'status': 'error',
+                    'message': 'An error occurred while updating your profile.'
+                }, status=500)
         
         return render(request, 'TriadApp/admin/admin_profile.html', {
             'admin': admin,
@@ -265,171 +274,64 @@ def edit_employee(request, employee_id):
         employee = Employee.objects.get(id=employee_id, stall=admin.stall)
         
         if request.method == 'POST':
-            try:
-                with transaction.atomic():
-                    data = {
-                        'firstname': request.POST.get('firstname'),
-                        'middle_initial': request.POST.get('middle_initial'),
-                        'lastname': request.POST.get('lastname'),
-                        'birthdate': request.POST.get('birthdate'),
-                        'address': request.POST.get('address'),
-                        'contact_number': request.POST.get('contact_number'),
-                        'email': request.POST.get('email'),
-                        'religion': request.POST.get('religion'),
-                        'position': request.POST.get('position'),
-                        'username': request.POST.get('username'),
-                        'new_password': request.POST.get('new_password'),
-                        'is_active': request.POST.get('is_active') == 'true'
-                    }
-                    
-                    # If activating an employee, check stall employee limit
-                    if data['is_active'] and not employee.is_active:
-                        current_active_employees = Employee.objects.filter(
-                            stall=admin.stall, 
-                            is_active=True
-                        ).exclude(id=employee.id).count()
-                        
-                        if current_active_employees >= 2:
-                            return JsonResponse({
-                                'status': 'error',
-                                'message': 'Cannot activate employee. Maximum number of active employees (2) reached for this stall.'
-                            })
-                    
-                    # Check email uniqueness if changed and provided
-                    if data['email'] and data['email'] != employee.email:
-                        # Check CustomUser (Superadmin)
-                        if CustomUser.objects.filter(email=data['email']).exists():
-                            return JsonResponse({
-                                'status': 'error',
-                                'message': 'Email already exists in the system.'
-                            })
-                        
-                        # Check AdminProfile
-                        if AdminProfile.objects.filter(email=data['email']).exists():
-                            return JsonResponse({
-                                'status': 'error',
-                                'message': 'Email already exists in the system.'
-                            })
-                        
-                        # Check other Employees
-                        if Employee.objects.filter(email=data['email']).exclude(id=employee.id).exists():
-                            return JsonResponse({
-                                'status': 'error',
-                                'message': 'Email already exists in the system.'
-                            })
-                    
-                    # Check username uniqueness if changed
-                    if data['username'] != employee.username:
-                        # Check CustomUser (Superadmin)
-                        if CustomUser.objects.filter(username=data['username']).exists():
-                            return JsonResponse({
-                                'status': 'error',
-                                'message': 'Username already exists in the system.'
-                            })
-                        
-                        # Check AdminProfile
-                        if AdminProfile.objects.filter(username=data['username']).exists():
-                            return JsonResponse({
-                                'status': 'error',
-                                'message': 'Username already exists in the system.'
-                            })
-                        
-                        # Check other Employees
-                        if Employee.objects.filter(username=data['username']).exclude(id=employee.id).exists():
-                            return JsonResponse({
-                                'status': 'error',
-                                'message': 'Username already exists in the system.'
-                            })
-                    
-                    # Validate required fields
-                    required_fields = ['firstname', 'lastname', 'birthdate', 
-                                    'address', 'contact_number', 'position']
-                    
-                    if not all(data[field] for field in required_fields):
-                        return JsonResponse({
-                            'status': 'error',
-                            'message': 'Please fill in all required fields.'
-                        })
-                    
-                    # Calculate age
-                    birthdate = date.fromisoformat(data['birthdate'])
-                    today = date.today()
-                    age = (today.year - birthdate.year - 
-                          ((today.month, today.day) < (birthdate.month, birthdate.day)))
-                    
-                    # Validate age
-                    if age < 15:
-                        return JsonResponse({
-                            'status': 'error',
-                            'message': 'Employee must be at least 15 years old.'
-                        })
-                    
-                    # Update employee data
-                    employee.firstname = data['firstname']
-                    employee.middle_initial = data['middle_initial']
-                    employee.lastname = data['lastname']
-                    employee.birthdate = birthdate
-                    employee.age = age
-                    employee.address = data['address']
-                    employee.contact_number = data['contact_number']
-                    employee.email = data['email']
-                    employee.religion = data['religion']
-                    employee.position = data['position']
-                    employee.username = data['username']
-                    employee.is_active = data['is_active']
-                    
-                    # Update password if provided
-                    if data['new_password']:
-                        # Print debug information
-                        print(f"New Raw Password: {data['new_password']}")
-                        
-                        # Hash the new password
-                        salt = bcrypt.gensalt()
-                        hashed_password = bcrypt.hashpw(data['new_password'].encode('utf-8'), salt)
-                        
-                        # Update both passwords
-                        employee.password = hashed_password.decode('utf-8')
-                        employee.raw_password = data['new_password']
-                        
-                        print(f"New Hashed Password: {employee.password}")
-                        print(f"New Raw Password Stored: {employee.raw_password}")
-                    
-                    # Save the employee
-                    employee.save()
-                    
+            # Get form data
+            data = {
+                'firstname': request.POST.get('firstname'),
+                'middle_initial': request.POST.get('middle_initial'),
+                'lastname': request.POST.get('lastname'),
+                'birthdate': request.POST.get('birthdate'),
+                'address': request.POST.get('address'),
+                'contact_number': request.POST.get('contact_number'),
+                'email': request.POST.get('email'),
+                'religion': request.POST.get('religion'),
+                'position': request.POST.get('position'),
+                'username': request.POST.get('username'),
+                'new_password': request.POST.get('new_password'),
+                # Checkbox returns 'on' if checked, None if unchecked
+                'is_active': request.POST.get('is_active') == 'on'
+            }
+
+            # Check if activating and if there's room for another active employee
+            if data['is_active'] and not employee.is_active:
+                current_active_count = Employee.objects.filter(
+                    stall=admin.stall, 
+                    is_active=True
+                ).exclude(id=employee_id).count()
+                
+                if current_active_count >= 2:
                     return JsonResponse({
-                        'status': 'success',
-                        'message': f'Employee {employee.firstname} {employee.lastname} updated successfully!'
+                        'status': 'error',
+                        'message': 'Cannot activate employee. Maximum number of active employees (2) reached for this stall.'
                     })
-                    
-            except ValueError as e:
-                return JsonResponse({
-                    'status': 'error',
-                    'message': 'Invalid date format.'
-                })
-            except Exception as e:
-                return JsonResponse({
-                    'status': 'error',
-                    'message': str(e)
-                })
-        
+
+            # Update employee data including status
+            employee.is_active = data['is_active']
+            
+            # ... rest of your update logic ...
+
+            employee.save()
+            
+            return JsonResponse({
+                'status': 'success',
+                'message': f'Employee {employee.firstname} {employee.lastname} updated successfully!'
+            })
+            
         # GET request - return employee data
         return JsonResponse({
             'status': 'success',
             'employee': {
                 'id': employee.id,
                 'firstname': employee.firstname,
-                'middle_initial': employee.middle_initial,
+                'middle_initial': employee.middle_initial or '',
                 'lastname': employee.lastname,
-                'birthdate': employee.birthdate.isoformat(),
+                'birthdate': employee.birthdate.isoformat() if employee.birthdate else '',
                 'address': employee.address,
                 'contact_number': employee.contact_number,
-                'email': employee.email,
-                'religion': employee.religion,
+                'email': employee.email or '',
+                'religion': employee.religion or '',
                 'position': employee.position,
                 'username': employee.username,
-                'is_active': employee.is_active,
-                'raw_password': employee.raw_password
+                'is_active': employee.is_active
             }
         })
         
@@ -437,12 +339,12 @@ def edit_employee(request, employee_id):
         return JsonResponse({
             'status': 'error',
             'message': 'Employee not found.'
-        })
+        }, status=404)
     except Exception as e:
         return JsonResponse({
             'status': 'error',
             'message': str(e)
-        })
+        }, status=500)
 
 
 @admin_required
@@ -501,7 +403,8 @@ def manage_suppliers(request):
             # Ensure all required fields are present
             required_fields = [
                 'firstname', 'lastname', 'contact_person', 'license_number',
-                'contact_number', 'email_address', 'address', 'contract_end_date'
+                'contact_number', 'email_address', 'address', 
+                'contract_start_date', 'contract_end_date'
             ]
             
             # Check if all required fields are present
@@ -524,6 +427,7 @@ def manage_suppliers(request):
                     contact_number=post_data['contact_number'],
                     email_address=post_data['email_address'],
                     address=post_data['address'],
+                    contract_start_date=post_data['contract_start_date'],
                     contract_end_date=post_data['contract_end_date']
                 )
                 
@@ -609,6 +513,7 @@ def edit_supplier(request, supplier_id):
                 supplier.contact_number = post_data.get('contact_number')
                 supplier.email_address = post_data.get('email_address')
                 supplier.address = post_data.get('address')
+                supplier.contract_start_date = post_data.get('contract_start_date')
                 supplier.contract_end_date = post_data.get('contract_end_date')
                 
                 # Only check license if it's actually different (case-insensitive comparison)
@@ -655,6 +560,7 @@ def edit_supplier(request, supplier_id):
             'contact_number': supplier.contact_number,
             'email_address': supplier.email_address,
             'license_number': supplier.license_number,
+            'contract_start_date': supplier.contract_start_date.strftime('%Y-%m-%d'),
             'contract_end_date': supplier.contract_end_date.strftime('%Y-%m-%d'),
         }
         return JsonResponse(data)
