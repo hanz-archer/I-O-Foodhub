@@ -38,7 +38,7 @@
 
     <!-- Form Section -->
     <div class="bg-white rounded-lg shadow-md p-6 mb-8">
-        <form method="POST" enctype="multipart/form-data" class="space-y-6" id="adminForm">
+        <form method="POST" enctype="multipart/form-data" class="space-y-6" id="adminForm" onsubmit="return confirmSubmission(event)">
             {% csrf_token %}
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div>
@@ -495,6 +495,55 @@
         const formattedMaxDate = maxDate.toISOString().split('T')[0];
         document.getElementById('birthdate').max = formattedMaxDate;
     });
+
+    function confirmSubmission(event) {
+        event.preventDefault();
+        
+        // Get form values for the confirmation message
+        const firstname = document.getElementById('firstname').value;
+        const lastname = document.getElementById('lastname').value;
+        const stallSelect = document.getElementById('stall');
+        const stallName = stallSelect.options[stallSelect.selectedIndex].text;
+
+        Swal.fire({
+            title: 'Confirm Registration',
+            html: `
+                <div class="text-left">
+                    <p class="mb-3">Are you sure you want to register this admin?</p>
+                    <div class="bg-gray-50 p-3 rounded-lg">
+                        <p><strong>Name:</strong> ${firstname} ${lastname}</p>
+                        <p><strong>Stall Assignment:</strong> ${stallName}</p>
+                    </div>
+                </div>
+            `,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Yes, register admin',
+            cancelButtonText: 'Cancel',
+            customClass: {
+                container: 'font-poppins'
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // Show loading state
+                Swal.fire({
+                    title: 'Registering Admin...',
+                    html: 'Please wait...',
+                    allowOutsideClick: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+                
+                // Submit the form
+                document.getElementById('adminForm').submit();
+            }
+        });
+
+        return false;
+    }
 </script>
 
 {% endblock %}

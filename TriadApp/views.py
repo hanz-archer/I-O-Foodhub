@@ -54,7 +54,13 @@ def super_admin(request):
             stall_data.append(stall_info)
 
         context = {
-            'super_admin': super_admin,
+            'super_admin': {
+                'firstname': request.user.first_name,
+                'lastname': request.user.last_name,
+                'email': request.user.email,
+                'username': request.user.username,
+                'profile_image': request.user.profile_image.url if hasattr(request.user, 'profile_image') and request.user.profile_image else None,
+            },
             'stalls': stall_data,
             'stalls_json': json.dumps(stall_data)
         }
@@ -63,9 +69,11 @@ def super_admin(request):
     except Exception as e:
         print(f"Error in super_admin view: {str(e)}")
         return render(request, 'TriadApp/superadmin/super_admin.html', {
-            'super_admin': super_admin,
+      
             'stalls': [],
-            'stalls_json': '[]'
+            'stalls_json': '[]',
+  
+        'super_admin': request.user
         })
 
 
